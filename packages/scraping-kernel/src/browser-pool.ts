@@ -27,7 +27,10 @@ export class BrowserPool {
 
   private async getBrowser(): Promise<Browser> {
     if (!this.browser) {
-      this.browser = await chromium.launch({ headless: true });
+      // Lets deployments pin a system-installed Chromium (e.g. in sandboxed CI containers
+      // that block Playwright's own browser downloads) instead of Playwright's bundled one.
+      const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined;
+      this.browser = await chromium.launch({ headless: true, executablePath });
     }
     return this.browser;
   }
