@@ -1,0 +1,35 @@
+{
+  "name": "@dean/api",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "build": "nest build",
+    "start": "node dist/main.js",
+    "start:dev": "nest start --watch",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "echo \"no tests\" && exit 0"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.1",
+    "@dean/ai-orchestration": "workspace:*",
+    "@dean/config": "workspace:*",
+    "@dean/db": "workspace:*",
+    "@dean/logger": "workspace:*",
+    "@dean/pricing-engine": "workspace:*",
+    "@dean/retailer-adapters": "workspace:*",
+    "@dean/shared-types": "workspace:*",
+    "@nestjs/common": "^10.4.15",
+    "dotenv": "^16.4.7",
+    "@nestjs/core": "^10.4.15",
+    "@nestjs/platform-express": "^10.4.15",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^10.4.9",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.5",
+    "typescript": "^5.7.3"
+  }
+}

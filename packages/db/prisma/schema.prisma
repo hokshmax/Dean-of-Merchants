@@ -1,0 +1,77 @@
+// Phase 0 + Phase 1 schema: chat search -> price comparison only.
+// Order/Payment/OrderEvent/AdapterRunLog/ManualInterventionTask land in Phase 2/3.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String        @id @default(cuid())
+  email        String        @unique
+  createdAt    DateTime      @default(now())
+  chatSessions ChatSession[]
+}
+
+model ChatSession {
+  id              String          @id @default(cuid())
+  userId          String
+  user            User            @relation(fields: [userId], references: [id])
+  rawMessages     Json
+  structuredQuery Json?
+  retailerOffers  RetailerOffer[]
+  quotes          Quote[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([userId])
+}
+
+model RetailerOffer {
+  id                     String       @id @default(cuid())
+  chatSessionId          String?
+  chatSession            ChatSession? @relation(fields: [chatSessionId], references: [id])
+  retailerId             String
+  retailerName           String
+  offerId                String
+  title                  String
+  url                    String
+  imageUrl               String?
+  priceAmountMinorUnits  Int
+  currency               String
+  availability           String
+  scrapedAt              DateTime
+  rawSnapshot            Json?
+  quotes                 Quote[]
+  createdAt              DateTime     @default(now())
+
+  @@index([chatSessionId])
+  @@index([retailerId])
+}
+
+model Quote {
+  id                            String        @id @default(cuid())
+  chatSessionId                 String
+  chatSession                   ChatSession   @relation(fields: [chatSessionId], references: [id])
+  retailerOfferId                String
+  retailerOffer                  RetailerOffer @relation(fields: [retailerOfferId], references: [id])
+  productPriceAmountMinorUnits    Int
+  shippingCostAmountMinorUnits    Int
+  taxAmountMinorUnits             Int
+  platformFeeRate                 Float
+  platformFeeAmountMinorUnits     Int
+  landedCostAmountMinorUnits      Int
+  totalChargeAmountMinorUnits     Int
+  currency                        String
+  quotedAt                        DateTime
+  expiresAt                       DateTime
+  createdAt                       DateTime      @default(now())
+
+  @@index([chatSessionId])
+  @@index([retailerOfferId])
+}
