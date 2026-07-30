@@ -1,0 +1,27 @@
+{
+  "name": "Dean of Merchants",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:1-20-bookworm",
+
+  "onCreateCommand": "corepack enable && corepack prepare pnpm@10.33.0 --activate",
+  "postCreateCommand": "pnpm install && pnpm --filter @dean/db prisma:generate && pnpm exec playwright install --with-deps chromium",
+  "postStartCommand": "bash .devcontainer/post-start.sh",
+
+  "containerEnv": {
+    "NODE_ENV": "development",
+    "DATABASE_URL": "postgresql://postgres:postgres@localhost:5432/dean_of_merchants",
+    "REDIS_URL": "redis://localhost:6379",
+    "ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY}"
+  },
+
+  "forwardPorts": [3000, 3001],
+  "portsAttributes": {
+    "3000": { "label": "Web (chat UI)", "onAutoForward": "openPreview" },
+    "3001": { "label": "API", "onAutoForward": "notify" }
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": ["dbaeumer.vscode-eslint", "esbenp.prettier-vscode", "Prisma.prisma"]
+    }
+  }
+}

@@ -6,6 +6,7 @@
     "build": "nest build",
     "start": "node dist/main.js",
     "start:dev": "nest start --watch",
+    "dev": "nest start --watch",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "echo \"no tests\" && exit 0"
   },
