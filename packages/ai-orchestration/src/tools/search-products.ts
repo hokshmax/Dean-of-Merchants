@@ -1,4 +1,3 @@
-import type Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import type { OfferQuote } from "@dean/shared-types";
 
@@ -7,8 +6,8 @@ export const SEARCH_PRODUCTS_TOOL_NAME = "search_products";
 /**
  * Claude is only ever allowed to emit a structured search query -- never a purchase
  * instruction. destinationCountryCode/currency intentionally are NOT part of this schema:
- * they come from the user's account/session, not from anything Claude infers from chat, so a
- * model mistake can't silently ship an order to (or price it in) the wrong country.
+ * they come from the user's account/session, not from anything the model infers from chat, so
+ * a model mistake can't silently ship an order to (or price it in) the wrong country.
  */
 export const searchProductsInputSchema = z.object({
   rawQuery: z.string().min(1).describe("The user's product request in natural language"),
@@ -27,13 +26,25 @@ export const searchProductsInputSchema = z.object({
 });
 export type SearchProductsInput = z.infer<typeof searchProductsInputSchema>;
 
-export const searchProductsTool: Anthropic.Tool = {
+/**
+ * Neutral tool definition, provider-agnostic. Each AIProvider converts this to its own
+ * native function/tool-declaration format (Anthropic's `input_schema`, Gemini's
+ * `functionDeclarations[].parameters`) at its own boundary -- see providers/claude-provider.ts
+ * and providers/gemini-provider.ts.
+ */
+export interface ToolDefinition {
+  name: string;
+  description: string;
+  parameters: Record<string, unknown>;
+}
+
+export const searchProductsToolDefinition: ToolDefinition = {
   name: SEARCH_PRODUCTS_TOOL_NAME,
   description:
     "Search local and global retailers for priced offers matching a product request. " +
     "Returns ranked offers with full landed-cost breakdowns (product price, shipping, tax, " +
     "and platform fee). Does not purchase anything.",
-  input_schema: {
+  parameters: {
     type: "object",
     properties: {
       rawQuery: { type: "string", description: "The user's product request in natural language" },

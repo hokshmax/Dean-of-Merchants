@@ -13,6 +13,7 @@
     "@anthropic-ai/sdk": "^0.32.1",
     "@dean/logger": "workspace:*",
     "@dean/shared-types": "workspace:*",
+    "@google/genai": "^0.15.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {

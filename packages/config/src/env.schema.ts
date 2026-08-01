@@ -1,13 +1,24 @@
 import { z } from "zod";
 
+// Devcontainer/Codespaces secret passthrough (`${localEnv:X}`) injects an empty string, not an
+// unset variable, when a secret isn't configured -- so a plain `.optional()` isn't enough to
+// treat "not configured" as absent. Coerce empty string to undefined before the optional/min
+// check runs, for every "secret that's fine to be missing" field below.
+const optionalSecret = () => z.preprocess((v) => (v === "" ? undefined : v), z.string().min(1).optional());
+
 export const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
 
   DATABASE_URL: z.string().min(1),
   REDIS_URL: z.string().min(1),
 
-  ANTHROPIC_API_KEY: z.string().min(1).optional(),
+  AI_PROVIDER: z.enum(["claude", "gemini"]).default("claude"),
+
+  ANTHROPIC_API_KEY: optionalSecret(),
   ANTHROPIC_MODEL: z.string().default("claude-sonnet-5"),
+
+  GEMINI_API_KEY: optionalSecret(),
+  GEMINI_MODEL: z.string().default("gemini-2.5-flash"),
 
   NOWPAYMENTS_API_KEY: z.string().optional(),
   NOWPAYMENTS_IPN_SECRET: z.string().optional(),

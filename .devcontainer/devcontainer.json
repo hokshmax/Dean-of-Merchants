@@ -10,7 +10,8 @@
     "NODE_ENV": "development",
     "DATABASE_URL": "postgresql://postgres:postgres@localhost:5432/dean_of_merchants",
     "REDIS_URL": "redis://localhost:6379",
-    "ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY}"
+    "ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY}",
+    "GEMINI_API_KEY": "${localEnv:GEMINI_API_KEY}"
   },
 
   "forwardPorts": [3000, 3001],

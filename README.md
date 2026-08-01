@@ -29,13 +29,24 @@ is just enough to get it running.
 
 ### Optional: enable real AI chat search
 
-Without a Claude API key, the chat UI, `/health`, and the search/pricing engine (offer
-cards, cost breakdown) all still work, but sending a chat message will fail once it tries
-to call Claude — the app will show that as an error in the UI rather than crashing.
+Without an API key for whichever provider is active, the chat UI, `/health`, and the
+search/pricing engine (offer cards, cost breakdown) all still work, but sending a chat
+message will fail once it tries to call the model — the app will show that as an error in
+the UI rather than crashing.
 
-To make chat search actually work: in this repo's **Settings → Secrets and variables →
-Codespaces**, add a secret named `ANTHROPIC_API_KEY` with your key. New Codespaces you
-create afterward will have it available automatically.
+The app supports two AI providers, picked by the `AI_PROVIDER` env var (defaults to
+`claude`):
+
+- **Claude (default)** — in this repo's **Settings → Secrets and variables → Codespaces**,
+  add a secret named `ANTHROPIC_API_KEY` with your key.
+- **Gemini** — add a secret named `GEMINI_API_KEY`, and set `AI_PROVIDER=gemini` (e.g.
+  `export AI_PROVIDER=gemini` before `pnpm turbo run dev` in the Codespace terminal, or add
+  it as a repository variable). The Gemini integration is newer and hasn't been exercised
+  against a real key yet — if chat search errors with Gemini selected, that's useful signal,
+  please report exactly what broke.
+
+Either way, new Codespaces created after adding a secret will have it available
+automatically; existing ones need to be rebuilt or restarted.
 
 ### Note on retailer search reliability
 
@@ -49,7 +60,7 @@ expected sometimes; it's isolated per-adapter and won't break the rest of the se
 Requires Node 20+ and pnpm (`corepack enable` gets you the right pnpm version).
 
 ```bash
-cp .env.example .env      # fill in ANTHROPIC_API_KEY to enable real chat search
+cp .env.example .env      # fill in ANTHROPIC_API_KEY (or GEMINI_API_KEY + AI_PROVIDER=gemini)
 pnpm install
 pnpm --filter @dean/db prisma:generate
 pnpm exec playwright install --with-deps chromium
