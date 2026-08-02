@@ -74,7 +74,7 @@ Requires Node 20+ and pnpm (`corepack enable` gets you the right pnpm version).
 cp .env.example .env      # fill in ANTHROPIC_API_KEY (or GEMINI_API_KEY + AI_PROVIDER=gemini)
 pnpm install
 pnpm --filter @dean/db prisma:generate
-pnpm exec playwright install --with-deps chromium
+pnpm --filter @dean/scraping-kernel exec playwright install --with-deps chromium
 pnpm turbo run dev
 ```
 
