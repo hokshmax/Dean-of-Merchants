@@ -36,7 +36,7 @@ export interface ChatTurnResult {
   offers: OfferQuote[];
 }
 
-export type AIProviderId = "claude" | "gemini";
+export type AIProviderId = "claude" | "gemini" | "ollama";
 
 export interface AIProvider {
   readonly id: AIProviderId;

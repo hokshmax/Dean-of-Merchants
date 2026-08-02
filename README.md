@@ -42,22 +42,43 @@ search/pricing engine (offer cards, cost breakdown) all still work, but sending 
 message will fail once it tries to call the model — the app will show that as an error in
 the UI rather than crashing.
 
-The app supports two AI providers, picked by the `AI_PROVIDER` env var (defaults to
+The app supports three AI providers, picked by the `AI_PROVIDER` env var (defaults to
 `claude`):
 
 - **Claude (default)** — in this repo's **Settings → Secrets and variables → Codespaces**,
   add a secret named `ANTHROPIC_API_KEY` with your key.
-- **Gemini** — add a secret named `GEMINI_API_KEY`. To make `gemini` the active provider
-  *persistently* (survives restarting the dev servers or opening a new terminal), add a
-  **repository variable** (same Settings page, **Variables** tab, not Secrets — provider
-  choice isn't sensitive) named `AI_PROVIDER` with value `gemini`. For a one-off test in the
-  current terminal without changing that default, `export AI_PROVIDER=gemini` before
-  `pnpm turbo run dev` works too, but only for that session. The Gemini integration is newer
-  and hasn't been exercised against a real key yet — if chat search errors with Gemini
-  selected, that's useful signal, please report exactly what broke.
+- **Gemini** — add a secret named `GEMINI_API_KEY`. Free-tier Gemini keys are rate-limited
+  quite tightly (as low as 20 requests/day for some models) — if you hit a `429
+  RESOURCE_EXHAUSTED` error, either wait for the daily quota to reset, switch `GEMINI_MODEL`
+  to a different model name (quotas are tracked per-model, so a model you haven't used yet
+  has its own fresh allowance), or enable billing on the Google AI Studio project the key
+  belongs to.
+- **Ollama (local, free, no external rate limit)** — runs an open model (Qwen3 7B by
+  default) entirely inside the Codespace itself via [Ollama](https://ollama.com), no API key
+  or billing involved anywhere. Set up automatically by `.devcontainer/devcontainer.json`
+  (installs Ollama, pulls the model, starts the server) — this is the slowest part of first-time
+  Codespace setup (~4-5GB model download) and the container needs enough RAM to run it
+  comfortably. Responses are noticeably slower than Claude/Gemini (CPU-only inference, no
+  GPU in a standard Codespace), and tool-calling reliability from a 7B open model is good but
+  not as consistent as the frontier hosted models. If the automated setup didn't finish
+  cleanly, the manual fallback is:
+  ```bash
+  curl -fsSL https://ollama.com/install.sh | sh
+  ollama serve &          # leave running in the background
+  ollama pull qwen3:7b    # one-time, ~4-5GB
+  ```
 
-Either way, new Codespaces created after adding a secret/variable will have it available
-automatically; existing ones need to be rebuilt or restarted.
+To make a provider *persistent* (survives restarting the dev servers or opening a new
+terminal), add a **repository variable** (Settings → Secrets and variables → Codespaces →
+**Variables** tab, not Secrets — provider choice isn't sensitive) named `AI_PROVIDER` with
+value `claude`, `gemini`, or `ollama`. For a one-off test in the current terminal without
+changing that default, `export AI_PROVIDER=gemini` (or `ollama`) before `pnpm turbo run dev`
+works too, but only for that session.
+
+New Codespaces created after adding a secret/variable will have it available automatically;
+existing ones need to be rebuilt to pick up a new repository variable (a plain restart is
+enough for a secret you're already using, but `AI_PROVIDER` itself needs a rebuild since
+it's read once at container creation).
 
 ### Note on retailer search reliability
 
