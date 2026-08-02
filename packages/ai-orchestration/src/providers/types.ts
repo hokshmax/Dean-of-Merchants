@@ -9,7 +9,10 @@ import type { SearchProductsInput, SearchProductsToolResult } from "../tools/sea
  */
 export type NeutralContentBlock =
   | { type: "text"; text: string }
-  | { type: "tool_use"; id: string; name: string; input: unknown }
+  // thoughtSignature is Gemini-specific (an opaque, base64 reasoning-state token) and unused by
+  // Claude. Gemini's newer "thinking" models reject a follow-up request that omits it on a
+  // function call the model previously made, so it has to round-trip through history verbatim.
+  | { type: "tool_use"; id: string; name: string; input: unknown; thoughtSignature?: string }
   // `name` duplicates the originating tool_use's name (not just its id) because Gemini's
   // functionResponse matches by tool name, unlike Anthropic's tool_use_id-based matching.
   | { type: "tool_result"; toolUseId: string; name: string; content: string; isError?: boolean };

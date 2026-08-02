@@ -25,14 +25,6 @@ const dynamicImport = new Function("specifier", "return import(specifier)") as (
   specifier: string,
 ) => Promise<typeof import("@google/genai")>;
 
-/**
- * NOTE: this provider is written to the documented Gemini function-calling shape
- * (functionCall / functionResponse parts, matched by tool name rather than a call-id like
- * Anthropic's tool_use_id), but has not been exercised against a live Gemini API call --
- * there's no GEMINI_API_KEY configured yet. Treat the request/response wiring here with the
- * same "needs real-world verification" caution as the eBay/Amazon scraper selectors.
- */
-
 export function toGeminiFunctionDeclaration(def: ToolDefinition): FunctionDeclaration {
   return {
     name: def.name,
@@ -49,12 +41,18 @@ export function toGeminiContents(history: NeutralMessage[]): Content[] {
         case "text":
           return { text: block.text };
         case "tool_use":
-          return { functionCall: { name: block.name, args: block.input as Record<string, unknown> } };
+          return {
+            functionCall: { name: block.name, args: block.input as Record<string, unknown> },
+            // Newer "thinking" models reject a follow-up request that's missing this on a
+            // function call the model itself made in a prior turn -- must round-trip verbatim.
+            ...(block.thoughtSignature ? { thoughtSignature: block.thoughtSignature } : {}),
+          };
         case "tool_result":
           return {
             functionResponse: {
               name: block.name,
-              response: block.isError ? { error: block.content } : { result: block.content },
+              // Per the SDK's docs: "output" key for success, "error" key for failure.
+              response: block.isError ? { error: block.content } : { output: block.content },
             },
           };
       }
@@ -77,6 +75,7 @@ export function fromGeminiParts(parts: Part[]): NeutralContentBlock[] {
           id: `${part.functionCall.name ?? "call"}-${callIndex}`,
           name: part.functionCall.name ?? "",
           input: part.functionCall.args ?? {},
+          ...(part.thoughtSignature ? { thoughtSignature: part.thoughtSignature } : {}),
         };
       }
       return null;

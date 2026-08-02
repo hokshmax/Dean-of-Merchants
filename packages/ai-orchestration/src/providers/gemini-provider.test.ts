@@ -44,8 +44,44 @@ describe("toGeminiContents", () => {
       { functionCall: { name: "search_products", args: { rawQuery: "mouse" } } },
     ]);
     expect(contents[1].parts).toEqual([
-      { functionResponse: { name: "search_products", response: { result: "{}" } } },
+      { functionResponse: { name: "search_products", response: { output: "{}" } } },
     ]);
+  });
+
+  it("round-trips thoughtSignature onto the functionCall part when present", () => {
+    const history: NeutralMessage[] = [
+      {
+        role: "assistant",
+        content: [
+          {
+            type: "tool_use",
+            id: "search_products-1",
+            name: "search_products",
+            input: { rawQuery: "mouse" },
+            thoughtSignature: "opaque-signature-abc",
+          },
+        ],
+      },
+    ];
+
+    expect(toGeminiContents(history)[0].parts).toEqual([
+      {
+        functionCall: { name: "search_products", args: { rawQuery: "mouse" } },
+        thoughtSignature: "opaque-signature-abc",
+      },
+    ]);
+  });
+
+  it("omits thoughtSignature from the functionCall part when absent", () => {
+    const history: NeutralMessage[] = [
+      {
+        role: "assistant",
+        content: [{ type: "tool_use", id: "search_products-1", name: "search_products", input: {} }],
+      },
+    ];
+
+    const part = toGeminiContents(history)[0].parts?.[0];
+    expect(part).not.toHaveProperty("thoughtSignature");
   });
 
   it("wraps a failed tool_result as an error response", () => {
@@ -79,5 +115,24 @@ describe("fromGeminiParts", () => {
 
   it("returns an empty array for parts with no text or functionCall", () => {
     expect(fromGeminiParts([{ inlineData: { data: "x", mimeType: "image/png" } } as never])).toEqual([]);
+  });
+
+  it("captures thoughtSignature from a functionCall part when present", () => {
+    const result = fromGeminiParts([
+      {
+        functionCall: { name: "search_products", args: { rawQuery: "mouse" } },
+        thoughtSignature: "opaque-signature-abc",
+      },
+    ]);
+
+    expect(result).toEqual([
+      {
+        type: "tool_use",
+        id: "search_products-1",
+        name: "search_products",
+        input: { rawQuery: "mouse" },
+        thoughtSignature: "opaque-signature-abc",
+      },
+    ]);
   });
 });
