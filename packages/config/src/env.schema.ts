@@ -21,7 +21,10 @@ export const envSchema = z.object({
   ANTHROPIC_MODEL: z.string().default("claude-sonnet-5"),
 
   GEMINI_API_KEY: optionalSecret(),
-  GEMINI_MODEL: z.string().default("gemini-2.5-flash"),
+  // "-latest" is a Google-maintained alias that auto-points to the current stable Flash
+  // release, so this doesn't go stale the way a pinned dated model (e.g. gemini-2.5-flash,
+  // deprecated as of this writing) eventually does.
+  GEMINI_MODEL: z.string().default("gemini-flash-latest"),
 
   NOWPAYMENTS_API_KEY: z.string().optional(),
   NOWPAYMENTS_IPN_SECRET: z.string().optional(),
