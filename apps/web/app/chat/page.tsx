@@ -3,8 +3,7 @@
 import { useState } from "react";
 import type { OfferQuote } from "@dean/shared-types";
 import { OfferCard } from "../../components/OfferCard";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+import { resolveApiUrl } from "../../lib/api-url";
 
 interface ChatTurn {
   role: "user" | "assistant";
@@ -30,7 +29,7 @@ export default function ChatPage() {
     setError(undefined);
 
     try {
-      const res = await fetch(`${API_URL}/chat`, {
+      const res = await fetch(`${resolveApiUrl()}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId, message, destinationCountryCode: "US", currency: "USD" }),

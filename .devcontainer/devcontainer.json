@@ -4,7 +4,6 @@
 
   "onCreateCommand": "sudo corepack enable && sudo corepack prepare pnpm@10.33.0 --activate",
   "postCreateCommand": "pnpm install && pnpm --filter @dean/db prisma:generate && pnpm exec playwright install --with-deps chromium",
-  "postStartCommand": "bash .devcontainer/post-start.sh",
 
   "containerEnv": {
     "NODE_ENV": "development",
