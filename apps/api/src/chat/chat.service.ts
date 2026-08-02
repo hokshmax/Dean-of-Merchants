@@ -23,23 +23,13 @@ export class ChatService {
   constructor(private readonly searchService: SearchService) {
     const env = loadEnv();
 
-    if (env.AI_PROVIDER === "ollama") {
-      // Local server, no API key -- just needs its own process running (see
-      // .devcontainer/devcontainer.json), not a secret.
-      this.provider = createAIProvider("ollama", {
-        apiKey: "",
-        model: env.OLLAMA_MODEL,
-        baseUrl: env.OLLAMA_BASE_URL,
-      });
-    } else {
-      const apiKey = env.AI_PROVIDER === "gemini" ? env.GEMINI_API_KEY : env.ANTHROPIC_API_KEY;
-      const model = env.AI_PROVIDER === "gemini" ? env.GEMINI_MODEL : env.ANTHROPIC_MODEL;
-      if (!apiKey) {
-        const keyName = env.AI_PROVIDER === "gemini" ? "GEMINI_API_KEY" : "ANTHROPIC_API_KEY";
-        logger.warn({ provider: env.AI_PROVIDER }, `${keyName} is not set; chat requests will fail until it's configured`);
-      }
-      this.provider = createAIProvider(env.AI_PROVIDER, { apiKey: apiKey ?? "", model });
+    const apiKey = env.AI_PROVIDER === "gemini" ? env.GEMINI_API_KEY : env.ANTHROPIC_API_KEY;
+    const model = env.AI_PROVIDER === "gemini" ? env.GEMINI_MODEL : env.ANTHROPIC_MODEL;
+    if (!apiKey) {
+      const keyName = env.AI_PROVIDER === "gemini" ? "GEMINI_API_KEY" : "ANTHROPIC_API_KEY";
+      logger.warn({ provider: env.AI_PROVIDER }, `${keyName} is not set; chat requests will fail until it's configured`);
     }
+    this.provider = createAIProvider(env.AI_PROVIDER, { apiKey: apiKey ?? "", model });
   }
 
   async handleTurn(

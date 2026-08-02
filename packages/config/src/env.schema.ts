@@ -14,7 +14,7 @@ export const envSchema = z.object({
 
   AI_PROVIDER: z.preprocess(
     (v) => (v === "" ? undefined : v),
-    z.enum(["claude", "gemini", "ollama"]).default("claude"),
+    z.enum(["claude", "gemini"]).default("claude"),
   ),
 
   ANTHROPIC_API_KEY: optionalSecret(),
@@ -25,11 +25,6 @@ export const envSchema = z.object({
   // release, so this doesn't go stale the way a pinned dated model (e.g. gemini-2.5-flash,
   // deprecated as of this writing) eventually does.
   GEMINI_MODEL: z.string().default("gemini-flash-latest"),
-
-  // Local model via Ollama (no API key -- self-hosted, free, no external rate limit; see
-  // .devcontainer/devcontainer.json for how it gets installed and started in Codespaces).
-  OLLAMA_BASE_URL: z.string().default("http://localhost:11434"),
-  OLLAMA_MODEL: z.string().default("qwen3:7b"),
 
   NOWPAYMENTS_API_KEY: z.string().optional(),
   NOWPAYMENTS_IPN_SECRET: z.string().optional(),

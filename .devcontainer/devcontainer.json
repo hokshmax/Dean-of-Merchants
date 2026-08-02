@@ -3,8 +3,7 @@
   "image": "mcr.microsoft.com/devcontainers/typescript-node:1-20-bookworm",
 
   "onCreateCommand": "sudo corepack enable && sudo corepack prepare pnpm@10.33.0 --activate",
-  "postCreateCommand": "pnpm install && pnpm --filter @dean/db prisma:generate && pnpm --filter @dean/scraping-kernel exec playwright install chromium && sudo pnpm --filter @dean/scraping-kernel exec playwright install-deps chromium && curl -fsSL https://ollama.com/install.sh | sh && (ollama serve > /tmp/ollama.log 2>&1 &) && sleep 5 && ollama pull qwen3:7b",
-  "postStartCommand": "(ollama serve > /tmp/ollama.log 2>&1 &) || true",
+  "postCreateCommand": "pnpm install && pnpm --filter @dean/db prisma:generate && pnpm --filter @dean/scraping-kernel exec playwright install chromium && sudo pnpm --filter @dean/scraping-kernel exec playwright install-deps chromium",
 
   "containerEnv": {
     "NODE_ENV": "development",
