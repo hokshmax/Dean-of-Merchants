@@ -27,6 +27,14 @@ is just enough to get it running.
    of the chat UI. If it doesn't, open the **Ports** tab and click the globe icon next to
    port 3000.
 
+   Port 3001 (the API) is configured to forward as **public**. This is required, not just a
+   preference: the chat page's browser-side `fetch()` call to the API is a background
+   cross-origin request, and Codespaces' default **private** port visibility blocks those
+   (only interactive top-level navigation completes its auth flow) — you'd otherwise see
+   "Failed to fetch" in the chat UI with nothing in the API's logs at all. If you created your
+   Codespace before this was added, fix it manually: **Ports tab → right-click port 3001 →
+   Port Visibility → Public**.
+
 ### Optional: enable real AI chat search
 
 Without an API key for whichever provider is active, the chat UI, `/health`, and the
@@ -39,13 +47,16 @@ The app supports two AI providers, picked by the `AI_PROVIDER` env var (defaults
 
 - **Claude (default)** — in this repo's **Settings → Secrets and variables → Codespaces**,
   add a secret named `ANTHROPIC_API_KEY` with your key.
-- **Gemini** — add a secret named `GEMINI_API_KEY`, and set `AI_PROVIDER=gemini` (e.g.
-  `export AI_PROVIDER=gemini` before `pnpm turbo run dev` in the Codespace terminal, or add
-  it as a repository variable). The Gemini integration is newer and hasn't been exercised
-  against a real key yet — if chat search errors with Gemini selected, that's useful signal,
-  please report exactly what broke.
+- **Gemini** — add a secret named `GEMINI_API_KEY`. To make `gemini` the active provider
+  *persistently* (survives restarting the dev servers or opening a new terminal), add a
+  **repository variable** (same Settings page, **Variables** tab, not Secrets — provider
+  choice isn't sensitive) named `AI_PROVIDER` with value `gemini`. For a one-off test in the
+  current terminal without changing that default, `export AI_PROVIDER=gemini` before
+  `pnpm turbo run dev` works too, but only for that session. The Gemini integration is newer
+  and hasn't been exercised against a real key yet — if chat search errors with Gemini
+  selected, that's useful signal, please report exactly what broke.
 
-Either way, new Codespaces created after adding a secret will have it available
+Either way, new Codespaces created after adding a secret/variable will have it available
 automatically; existing ones need to be rebuilt or restarted.
 
 ### Note on retailer search reliability

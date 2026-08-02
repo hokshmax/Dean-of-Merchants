@@ -10,13 +10,14 @@
     "DATABASE_URL": "postgresql://postgres:postgres@localhost:5432/dean_of_merchants",
     "REDIS_URL": "redis://localhost:6379",
     "ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY}",
-    "GEMINI_API_KEY": "${localEnv:GEMINI_API_KEY}"
+    "GEMINI_API_KEY": "${localEnv:GEMINI_API_KEY}",
+    "AI_PROVIDER": "${localEnv:AI_PROVIDER}"
   },
 
   "forwardPorts": [3000, 3001],
   "portsAttributes": {
     "3000": { "label": "Web (chat UI)", "onAutoForward": "openPreview" },
-    "3001": { "label": "API", "onAutoForward": "notify" }
+    "3001": { "label": "API", "onAutoForward": "notify", "visibility": "public" }
   },
 
   "customizations": {

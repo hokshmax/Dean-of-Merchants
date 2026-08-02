@@ -12,7 +12,10 @@ export const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
   REDIS_URL: z.string().min(1),
 
-  AI_PROVIDER: z.enum(["claude", "gemini"]).default("claude"),
+  AI_PROVIDER: z.preprocess(
+    (v) => (v === "" ? undefined : v),
+    z.enum(["claude", "gemini"]).default("claude"),
+  ),
 
   ANTHROPIC_API_KEY: optionalSecret(),
   ANTHROPIC_MODEL: z.string().default("claude-sonnet-5"),
