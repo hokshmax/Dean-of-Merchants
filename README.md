@@ -75,6 +75,38 @@ retailer markup changes, and Amazon in particular has aggressive anti-bot detect
 can return a CAPTCHA instead of results. A failed or empty result for one retailer is
 expected sometimes; it's isolated per-adapter and won't break the rest of the search.
 
+## Running with Docker
+
+This is the recommended way to test the app from your own machine — in particular, to check
+whether retailer search works from your home/residential IP instead of a cloud datacenter IP
+(see "Note on retailer search reliability" above; Codespaces and most cloud VMs get blocked by
+retailer anti-bot systems because their IP ranges are flagged as non-residential).
+
+Requires [Docker](https://docs.docker.com/get-docker/) (with Compose v2, bundled with current
+Docker Desktop and Docker Engine installs).
+
+```bash
+cp .env.example .env      # fill in ANTHROPIC_API_KEY (or GEMINI_API_KEY + AI_PROVIDER=gemini)
+docker compose -f infra/docker-compose.yml up --build
+```
+
+This builds and starts four containers: `postgres`, `redis`, `api` (NestJS, with Playwright's
+Chromium already baked into the image), and `web` (Next.js). First build takes a few minutes —
+the `api` image is based on Playwright's official image so no separate browser-download step is
+needed.
+
+- Web (chat UI): http://localhost:3000
+- API: http://localhost:3001
+
+`DATABASE_URL` and `REDIS_URL` are overridden inside `infra/docker-compose.yml` to point at the
+`postgres`/`redis` containers by service name — you don't need to (and shouldn't) change those
+two in your `.env` for Docker; everything else in `.env` (API keys, `AI_PROVIDER`, etc.) is
+passed through as-is.
+
+To stop: `Ctrl+C`, then `docker compose -f infra/docker-compose.yml down` (add `-v` to also wipe
+the Postgres/Redis volumes). To rebuild after changing code: re-run the `up --build` command
+above.
+
 ## Running locally instead
 
 Requires Node 20+ and pnpm (`corepack enable` gets you the right pnpm version).
