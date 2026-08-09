@@ -7,7 +7,7 @@ WORKDIR /app
 COPY . .
 
 RUN pnpm install --frozen-lockfile
-RUN pnpm turbo run build --filter=@dean/web...
+RUN pnpm turbo run build --filter=@dean/web... --concurrency=1
 
 ENV NODE_ENV=production
 ENV PORT=3000

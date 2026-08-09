@@ -15,7 +15,7 @@ COPY . .
 
 RUN pnpm install --frozen-lockfile
 RUN pnpm --filter @dean/db prisma:generate
-RUN pnpm turbo run build --filter=@dean/api...
+RUN pnpm turbo run build --filter=@dean/api... --concurrency=1
 
 ENV NODE_ENV=production
 EXPOSE 3001
