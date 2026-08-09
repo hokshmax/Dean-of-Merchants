@@ -20,35 +20,41 @@ export const envSchema = z.object({
   ANTHROPIC_API_KEY: optionalSecret(),
   ANTHROPIC_MODEL: z.string().default("claude-sonnet-5"),
 
+  // Also used for AI image generation (Imagen) below, regardless of which chat provider is
+  // active -- Imagen is only available through Google, so this key does double duty.
   GEMINI_API_KEY: optionalSecret(),
   // "-latest" is a Google-maintained alias that auto-points to the current stable Flash
   // release, so this doesn't go stale the way a pinned dated model (e.g. gemini-2.5-flash,
   // deprecated as of this writing) eventually does.
   GEMINI_MODEL: z.string().default("gemini-flash-latest"),
+  IMAGEN_MODEL: z.string().default("imagen-4.0-generate-001"),
 
-  NOWPAYMENTS_API_KEY: z.string().optional(),
-  NOWPAYMENTS_IPN_SECRET: z.string().optional(),
-  PAYPAL_CLIENT_ID: z.string().optional(),
-  PAYPAL_CLIENT_SECRET: z.string().optional(),
-  PAYPAL_ENV: z.enum(["sandbox", "live"]).default("sandbox"),
+  // Where generated design images are written on disk, and served from at
+  // `${API_PUBLIC_URL}/designs/<file>`. Printful's order API fetches the print file by URL, so
+  // API_PUBLIC_URL must be a real internet-reachable address (not "localhost") for order
+  // submission to actually work -- see README.
+  DESIGN_STORAGE_DIR: z.string().default("./data/designs"),
+  API_PUBLIC_URL: z.string().default("http://localhost:3001"),
+  // Where Stripe Checkout redirects back to after payment succeeds/is canceled.
+  WEB_PUBLIC_URL: z.string().default("http://localhost:3000"),
 
-  // Retailer search now goes through each retailer's own official API/affiliate program
-  // instead of scraping (which every retailer's anti-bot protection blocked outright, even
-  // from a residential IP -- confirmed via debug screenshots). Adapters read these directly
-  // from process.env rather than through the parsed Env object; they're declared here purely
-  // as the documented list of what this app can be configured with. Retailers without a public
-  // API (Walmart, Target, AliExpress, noon, Temu, Amazon) stay disabled until their affiliate
-  // programs are approved and a real integration is written against real credentials.
-  EBAY_APP_ID: optionalSecret(),
-  EBAY_CERT_ID: optionalSecret(),
-  EBAY_CAMPAIGN_ID: z.string().optional(),
-  BESTBUY_API_KEY: optionalSecret(),
-  BESTBUY_AFFILIATE_LINK_TEMPLATE: z.string().optional(),
+  // Printful (print-on-demand fulfillment). Free self-serve private API token from a Printful
+  // account's Settings > Stores > API section.
+  PRINTFUL_API_KEY: optionalSecret(),
+  // Printful catalog product id for the t-shirt this app sells. Defaults to Bella + Canvas
+  // 3001, Printful's own long-standing example product, but catalog ids are Printful's to
+  // change -- overridable rather than trusted blindly.
+  PRINTFUL_TSHIRT_PRODUCT_ID: z.coerce.number().int().default(71),
 
-  // The app no longer processes payment or charges a platform fee -- it earns affiliate
-  // commission from retailers instead, invisible to the user. Kept configurable rather than
-  // deleted in case a future direct-checkout retailer integration needs it again.
-  PLATFORM_FEE_RATE: z.coerce.number().default(0),
+  // Stripe (checkout + payment). Test-mode keys from the Stripe dashboard are fine for
+  // development; STRIPE_WEBHOOK_SECRET comes from the webhook endpoint's settings once one is
+  // registered (`stripe listen` for local testing).
+  STRIPE_SECRET_KEY: optionalSecret(),
+  STRIPE_WEBHOOK_SECRET: optionalSecret(),
+
+  // Margin charged on top of Printful's base cost -- this is Eldorado's entire revenue model,
+  // no third-party affiliate/commission dependency.
+  MARGIN_RATE: z.coerce.number().default(0.5),
 
   API_PORT: z.coerce.number().default(3001),
   WEB_PORT: z.coerce.number().default(3000),

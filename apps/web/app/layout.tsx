@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 
 export const metadata = {
-  title: "Dean of Merchants",
-  description: "AI shopping assistant that finds the best local and global price.",
+  title: "Eldorado",
+  description: "Describe a design, AI creates it, and it's printed on a t-shirt and shipped to you.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

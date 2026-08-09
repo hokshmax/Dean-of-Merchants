@@ -7,6 +7,7 @@ export const MoneySchema = z.object({
 export type Money = z.infer<typeof MoneySchema>;
 
 export const AddressSchema = z.object({
+  name: z.string(),
   line1: z.string(),
   line2: z.string().optional(),
   city: z.string(),
@@ -16,110 +17,56 @@ export const AddressSchema = z.object({
 });
 export type Address = z.infer<typeof AddressSchema>;
 
-export const ProductConditionSchema = z.enum(["new", "used", "any"]);
-export type ProductCondition = z.infer<typeof ProductConditionSchema>;
-
-export const ProductQuerySchema = z.object({
-  rawQuery: z.string(),
-  brand: z.string().optional(),
-  model: z.string().optional(),
-  attributes: z.record(z.string(), z.string()).optional(),
-  budgetMaxMinorUnits: z.number().int().optional(),
-  currency: z.string().length(3).default("USD"),
-  destinationCountryCode: z.string().length(2),
-  condition: ProductConditionSchema.default("any"),
+/**
+ * A single AI-generated design. Images are generated on demand (Imagen) and referenced by URL
+ * once uploaded somewhere Printful's order API can fetch them from -- Printful requires a
+ * publicly reachable image URL, not inline bytes, when placing an order.
+ */
+export const DesignSchema = z.object({
+  id: z.string(),
+  prompt: z.string(),
+  imageUrl: z.string().url(),
+  createdAt: z.coerce.date(),
 });
-export type ProductQuery = z.infer<typeof ProductQuerySchema>;
+export type Design = z.infer<typeof DesignSchema>;
 
-export const SearchOptionsSchema = z.object({
-  timeoutMs: z.number().int().default(30_000),
-  maxResults: z.number().int().default(5),
+/**
+ * A single buyable product option from Printful's catalog -- one product/size/color
+ * combination, with the base cost Printful charges to print and ship it (before margin).
+ */
+export const PrintfulVariantSchema = z.object({
+  variantId: z.number().int(),
+  productName: z.string(),
+  size: z.string(),
+  color: z.string(),
+  baseCost: MoneySchema,
 });
-export type SearchOptions = z.infer<typeof SearchOptionsSchema>;
-
-export const RetailerOfferResultSchema = z.object({
-  retailerId: z.string(),
-  retailerName: z.string(),
-  offerId: z.string(),
-  title: z.string(),
-  url: z.string().url(),
-  imageUrl: z.string().url().optional(),
-  price: MoneySchema,
-  availability: z.enum(["in_stock", "out_of_stock", "unknown"]),
-  scrapedAt: z.coerce.date(),
-  rawSnapshot: z.unknown().optional(),
-});
-export type RetailerOfferResult = z.infer<typeof RetailerOfferResultSchema>;
-
-export const ShippingTaxEstimateSchema = z.object({
-  shippingCost: MoneySchema,
-  taxAmount: MoneySchema,
-  estimatedDeliveryDays: z.number().int().optional(),
-});
-export type ShippingTaxEstimate = z.infer<typeof ShippingTaxEstimateSchema>;
-
-export const QuoteBreakdownSchema = z.object({
-  quoteId: z.string(),
-  offerId: z.string(),
-  retailerId: z.string(),
-  productPrice: MoneySchema,
-  shippingCost: MoneySchema,
-  taxAmount: MoneySchema,
-  platformFeeRate: z.number(),
-  platformFee: MoneySchema,
-  landedCost: MoneySchema,
-  totalCharge: MoneySchema,
-  currency: z.string().length(3),
-  quotedAt: z.coerce.date(),
-  expiresAt: z.coerce.date(),
-});
-export type QuoteBreakdown = z.infer<typeof QuoteBreakdownSchema>;
-
-export const AdapterHealthStatusSchema = z.object({
-  retailerId: z.string(),
-  status: z.enum(["healthy", "degraded", "down"]),
-  lastSuccessAt: z.coerce.date().optional(),
-  lastFailureAt: z.coerce.date().optional(),
-  rollingFailureRate: z.number().min(0).max(1),
-});
-export type AdapterHealthStatus = z.infer<typeof AdapterHealthStatusSchema>;
-
-export const CheckoutInputSchema = z.object({
-  offerId: z.string(),
-  quoteId: z.string(),
-  shippingAddress: AddressSchema,
-  buyerEmail: z.string().email(),
-  maxPrice: MoneySchema,
-});
-export type CheckoutInput = z.infer<typeof CheckoutInputSchema>;
-
-export const CheckoutResultSchema = z.object({
-  success: z.boolean(),
-  retailerOrderId: z.string().optional(),
-  finalPrice: MoneySchema.optional(),
-  failureReason: z.string().optional(),
-});
-export type CheckoutResult = z.infer<typeof CheckoutResultSchema>;
-
-export const OfferQuoteSchema = z.object({
-  offer: RetailerOfferResultSchema,
-  quote: QuoteBreakdownSchema,
-});
-export type OfferQuote = z.infer<typeof OfferQuoteSchema>;
+export type PrintfulVariant = z.infer<typeof PrintfulVariantSchema>;
 
 export const OrderStatusSchema = z.enum([
-  "QUOTE_GENERATED",
-  "PAYMENT_PENDING",
-  "PAYMENT_FAILED",
+  "PENDING_PAYMENT",
   "PAID",
-  "PRICE_REVALIDATION",
-  "PRICE_CHANGED_REFUND_PENDING",
-  "PURCHASE_IN_PROGRESS",
-  "PURCHASE_FAILED",
-  "MANUAL_INTERVENTION_QUEUED",
-  "PURCHASED",
+  "SUBMITTED_TO_PRINTFUL",
+  "FULFILLMENT_FAILED",
+  "IN_PRODUCTION",
   "SHIPPED",
-  "DELIVERED",
-  "REFUNDED",
+  "CANCELED",
 ]);
 export type OrderStatus = z.infer<typeof OrderStatusSchema>;
+
+export const OrderSchema = z.object({
+  id: z.string(),
+  designId: z.string(),
+  imageUrl: z.string().url(),
+  variantId: z.number().int(),
+  quantity: z.number().int().min(1),
+  retailPrice: MoneySchema,
+  // Unknown until Stripe Checkout completes -- its hosted page collects both itself.
+  recipientEmail: z.string().email().optional(),
+  shippingAddress: AddressSchema.optional(),
+  status: OrderStatusSchema,
+  stripeCheckoutSessionId: z.string().optional(),
+  printfulOrderId: z.string().optional(),
+  createdAt: z.coerce.date(),
+});
+export type Order = z.infer<typeof OrderSchema>;

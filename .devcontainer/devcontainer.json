@@ -1,5 +1,5 @@
 {
-  "name": "Dean of Merchants",
+  "name": "Eldorado",
   "image": "mcr.microsoft.com/devcontainers/typescript-node:1-20-bookworm",
 
   "onCreateCommand": "sudo corepack enable && sudo corepack prepare pnpm@10.33.0 --activate",
@@ -12,10 +12,9 @@
     "ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY}",
     "GEMINI_API_KEY": "${localEnv:GEMINI_API_KEY}",
     "AI_PROVIDER": "${localEnv:AI_PROVIDER}",
-    "EBAY_APP_ID": "${localEnv:EBAY_APP_ID}",
-    "EBAY_CERT_ID": "${localEnv:EBAY_CERT_ID}",
-    "EBAY_CAMPAIGN_ID": "${localEnv:EBAY_CAMPAIGN_ID}",
-    "BESTBUY_API_KEY": "${localEnv:BESTBUY_API_KEY}"
+    "PRINTFUL_API_KEY": "${localEnv:PRINTFUL_API_KEY}",
+    "STRIPE_SECRET_KEY": "${localEnv:STRIPE_SECRET_KEY}",
+    "STRIPE_WEBHOOK_SECRET": "${localEnv:STRIPE_WEBHOOK_SECRET}"
   },
 
   "forwardPorts": [3000, 3001],

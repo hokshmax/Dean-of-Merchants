@@ -1,5 +1,4 @@
-// Phase 0 + Phase 1 schema: chat search -> price comparison only.
-// Order/Payment/OrderEvent/AdapterRunLog/ManualInterventionTask land in Phase 2/3.
+// Eldorado: AI-generated clothing designs, printed and shipped on demand via Printful.
 
 generator client {
   provider = "prisma-client-js"
@@ -11,67 +10,38 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id           String        @id @default(cuid())
-  email        String        @unique
-  createdAt    DateTime      @default(now())
-  chatSessions ChatSession[]
+model Design {
+  id        String   @id @default(cuid())
+  prompt    String
+  imageUrl  String
+  orders    Order[]
+  createdAt DateTime @default(now())
 }
 
-model ChatSession {
-  id              String          @id @default(cuid())
-  userId          String
-  user            User            @relation(fields: [userId], references: [id])
-  rawMessages     Json
-  structuredQuery Json?
-  retailerOffers  RetailerOffer[]
-  quotes          Quote[]
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+model Order {
+  id                           String   @id @default(cuid())
+  designId                     String
+  design                       Design   @relation(fields: [designId], references: [id])
+  variantId                    Int
+  quantity                     Int      @default(1)
+  retailPriceAmountMinorUnits  Int
+  currency                     String
+  // Unknown until Stripe Checkout completes -- Stripe's hosted page collects this itself, so
+  // the app never needs its own email/shipping form before starting checkout.
+  recipientEmail                String?
+  shippingName                 String?
+  shippingLine1                String?
+  shippingLine2                String?
+  shippingCity                 String?
+  shippingRegion                String?
+  shippingPostalCode           String?
+  shippingCountryCode          String?
+  // PENDING_PAYMENT | PAID | SUBMITTED_TO_PRINTFUL | FULFILLMENT_FAILED | IN_PRODUCTION | SHIPPED | CANCELED
+  status                       String   @default("PENDING_PAYMENT")
+  stripeCheckoutSessionId      String?  @unique
+  printfulOrderId              String?
+  createdAt                    DateTime @default(now())
+  updatedAt                    DateTime @updatedAt
 
-  @@index([userId])
-}
-
-model RetailerOffer {
-  id                     String       @id @default(cuid())
-  chatSessionId          String?
-  chatSession            ChatSession? @relation(fields: [chatSessionId], references: [id])
-  retailerId             String
-  retailerName           String
-  offerId                String
-  title                  String
-  url                    String
-  imageUrl               String?
-  priceAmountMinorUnits  Int
-  currency               String
-  availability           String
-  scrapedAt              DateTime
-  rawSnapshot            Json?
-  quotes                 Quote[]
-  createdAt              DateTime     @default(now())
-
-  @@index([chatSessionId])
-  @@index([retailerId])
-}
-
-model Quote {
-  id                            String        @id @default(cuid())
-  chatSessionId                 String
-  chatSession                   ChatSession   @relation(fields: [chatSessionId], references: [id])
-  retailerOfferId                String
-  retailerOffer                  RetailerOffer @relation(fields: [retailerOfferId], references: [id])
-  productPriceAmountMinorUnits    Int
-  shippingCostAmountMinorUnits    Int
-  taxAmountMinorUnits             Int
-  platformFeeRate                 Float
-  platformFeeAmountMinorUnits     Int
-  landedCostAmountMinorUnits      Int
-  totalChargeAmountMinorUnits     Int
-  currency                        String
-  quotedAt                        DateTime
-  expiresAt                       DateTime
-  createdAt                       DateTime      @default(now())
-
-  @@index([chatSessionId])
-  @@index([retailerOfferId])
+  @@index([designId])
 }

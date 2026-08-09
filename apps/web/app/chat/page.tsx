@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import type { OfferQuote } from "@dean/shared-types";
-import { OfferCard } from "../../components/OfferCard";
+import type { Design } from "@dean/shared-types";
+import { DesignCard } from "../../components/DesignCard";
 import { resolveApiUrl } from "../../lib/api-url";
 
 interface ChatTurn {
@@ -13,7 +13,7 @@ interface ChatTurn {
 export default function ChatPage() {
   const [sessionId, setSessionId] = useState<string | undefined>(undefined);
   const [turns, setTurns] = useState<ChatTurn[]>([]);
-  const [offers, setOffers] = useState<OfferQuote[]>([]);
+  const [design, setDesign] = useState<Design | undefined>(undefined);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | undefined>(undefined);
@@ -32,14 +32,14 @@ export default function ChatPage() {
       const res = await fetch(`${resolveApiUrl()}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId, message, destinationCountryCode: "US", currency: "USD" }),
+        body: JSON.stringify({ sessionId, message }),
       });
       if (!res.ok) throw new Error(`Request failed: ${res.status}`);
 
       const data = await res.json();
       setSessionId(data.sessionId);
       setTurns((prev) => [...prev, { role: "assistant", text: data.assistantText }]);
-      setOffers(data.offers ?? []);
+      if (data.design) setDesign(data.design);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -49,7 +49,7 @@ export default function ChatPage() {
 
   return (
     <main style={{ maxWidth: 720, margin: "40px auto", padding: "0 24px" }}>
-      <h1>Dean of Merchants</h1>
+      <h1>Eldorado</h1>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 24 }}>
         {turns.map((turn, i) => (
@@ -67,7 +67,7 @@ export default function ChatPage() {
             </div>
           </div>
         ))}
-        {loading && <div style={{ color: "#777" }}>Searching...</div>}
+        {loading && <div style={{ color: "#777" }}>Generating...</div>}
         {error && <div style={{ color: "crimson" }}>{error}</div>}
       </div>
 
@@ -75,7 +75,7 @@ export default function ChatPage() {
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="What are you looking to buy?"
+          placeholder="Describe a design you want on a t-shirt"
           style={{ flex: 1, padding: 10, borderRadius: 8, border: "1px solid #ccc" }}
         />
         <button type="submit" disabled={loading} style={{ padding: "10px 20px", borderRadius: 8 }}>
@@ -83,13 +83,7 @@ export default function ChatPage() {
         </button>
       </form>
 
-      {offers.length > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {offers.map((offerQuote) => (
-            <OfferCard key={offerQuote.quote.quoteId} offerQuote={offerQuote} />
-          ))}
-        </div>
-      )}
+      {design && <DesignCard design={design} />}
     </main>
   );
 }

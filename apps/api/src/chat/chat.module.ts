@@ -1,10 +1,10 @@
 import { Module } from "@nestjs/common";
-import { SearchModule } from "../search/search.module";
+import { DesignModule } from "../design/design.module";
 import { ChatController } from "./chat.controller";
 import { ChatService } from "./chat.service";
 
 @Module({
-  imports: [SearchModule],
+  imports: [DesignModule],
   controllers: [ChatController],
   providers: [ChatService],
   exports: [ChatService],

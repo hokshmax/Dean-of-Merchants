@@ -1,21 +1,21 @@
 import { describe, expect, it } from "vitest";
 import { fromGeminiParts, toGeminiContents, toGeminiFunctionDeclaration } from "./gemini-provider";
 import type { NeutralMessage } from "./types";
-import { searchProductsToolDefinition } from "../tools/search-products";
+import { generateDesignToolDefinition } from "../tools/generate-design";
 
 describe("toGeminiFunctionDeclaration", () => {
   it("maps the neutral tool definition to Gemini's FunctionDeclaration shape", () => {
-    const decl = toGeminiFunctionDeclaration(searchProductsToolDefinition);
-    expect(decl.name).toBe("search_products");
-    expect(decl.parameters).toEqual(searchProductsToolDefinition.parameters);
+    const decl = toGeminiFunctionDeclaration(generateDesignToolDefinition);
+    expect(decl.name).toBe("generate_design");
+    expect(decl.parameters).toEqual(generateDesignToolDefinition.parameters);
   });
 });
 
 describe("toGeminiContents", () => {
   it("maps neutral roles to Gemini's user/model roles", () => {
     const history: NeutralMessage[] = [
-      { role: "user", content: [{ type: "text", text: "find a mouse" }] },
-      { role: "assistant", content: [{ type: "text", text: "Let me search." }] },
+      { role: "user", content: [{ type: "text", text: "design a mountain shirt" }] },
+      { role: "assistant", content: [{ type: "text", text: "Let me generate that." }] },
     ];
 
     const contents = toGeminiContents(history);
@@ -28,12 +28,12 @@ describe("toGeminiContents", () => {
     const history: NeutralMessage[] = [
       {
         role: "assistant",
-        content: [{ type: "tool_use", id: "search_products-1", name: "search_products", input: { rawQuery: "mouse" } }],
+        content: [{ type: "tool_use", id: "generate_design-1", name: "generate_design", input: { prompt: "mountain line art" } }],
       },
       {
         role: "user",
         content: [
-          { type: "tool_result", toolUseId: "search_products-1", name: "search_products", content: "{}", isError: false },
+          { type: "tool_result", toolUseId: "generate_design-1", name: "generate_design", content: "{}", isError: false },
         ],
       },
     ];
@@ -41,10 +41,10 @@ describe("toGeminiContents", () => {
     const contents = toGeminiContents(history);
 
     expect(contents[0].parts).toEqual([
-      { functionCall: { name: "search_products", args: { rawQuery: "mouse" } } },
+      { functionCall: { name: "generate_design", args: { prompt: "mountain line art" } } },
     ]);
     expect(contents[1].parts).toEqual([
-      { functionResponse: { name: "search_products", response: { output: "{}" } } },
+      { functionResponse: { name: "generate_design", response: { output: "{}" } } },
     ]);
   });
 
@@ -55,9 +55,9 @@ describe("toGeminiContents", () => {
         content: [
           {
             type: "tool_use",
-            id: "search_products-1",
-            name: "search_products",
-            input: { rawQuery: "mouse" },
+            id: "generate_design-1",
+            name: "generate_design",
+            input: { prompt: "mountain line art" },
             thoughtSignature: "opaque-signature-abc",
           },
         ],
@@ -66,7 +66,7 @@ describe("toGeminiContents", () => {
 
     expect(toGeminiContents(history)[0].parts).toEqual([
       {
-        functionCall: { name: "search_products", args: { rawQuery: "mouse" } },
+        functionCall: { name: "generate_design", args: { prompt: "mountain line art" } },
         thoughtSignature: "opaque-signature-abc",
       },
     ]);
@@ -76,7 +76,7 @@ describe("toGeminiContents", () => {
     const history: NeutralMessage[] = [
       {
         role: "assistant",
-        content: [{ type: "tool_use", id: "search_products-1", name: "search_products", input: {} }],
+        content: [{ type: "tool_use", id: "generate_design-1", name: "generate_design", input: {} }],
       },
     ];
 
@@ -89,13 +89,13 @@ describe("toGeminiContents", () => {
       {
         role: "user",
         content: [
-          { type: "tool_result", toolUseId: "search_products-1", name: "search_products", content: "boom", isError: true },
+          { type: "tool_result", toolUseId: "generate_design-1", name: "generate_design", content: "boom", isError: true },
         ],
       },
     ];
 
     expect(toGeminiContents(history)[0].parts).toEqual([
-      { functionResponse: { name: "search_products", response: { error: "boom" } } },
+      { functionResponse: { name: "generate_design", response: { error: "boom" } } },
     ]);
   });
 });
@@ -103,13 +103,13 @@ describe("toGeminiContents", () => {
 describe("fromGeminiParts", () => {
   it("converts text and functionCall parts to neutral blocks", () => {
     const result = fromGeminiParts([
-      { text: "Searching now." },
-      { functionCall: { name: "search_products", args: { rawQuery: "mouse" } } },
+      { text: "Generating now." },
+      { functionCall: { name: "generate_design", args: { prompt: "mountain line art" } } },
     ]);
 
     expect(result).toEqual([
-      { type: "text", text: "Searching now." },
-      { type: "tool_use", id: "search_products-1", name: "search_products", input: { rawQuery: "mouse" } },
+      { type: "text", text: "Generating now." },
+      { type: "tool_use", id: "generate_design-1", name: "generate_design", input: { prompt: "mountain line art" } },
     ]);
   });
 
@@ -120,7 +120,7 @@ describe("fromGeminiParts", () => {
   it("captures thoughtSignature from a functionCall part when present", () => {
     const result = fromGeminiParts([
       {
-        functionCall: { name: "search_products", args: { rawQuery: "mouse" } },
+        functionCall: { name: "generate_design", args: { prompt: "mountain line art" } },
         thoughtSignature: "opaque-signature-abc",
       },
     ]);
@@ -128,9 +128,9 @@ describe("fromGeminiParts", () => {
     expect(result).toEqual([
       {
         type: "tool_use",
-        id: "search_products-1",
-        name: "search_products",
-        input: { rawQuery: "mouse" },
+        id: "generate_design-1",
+        name: "generate_design",
+        input: { prompt: "mountain line art" },
         thoughtSignature: "opaque-signature-abc",
       },
     ]);

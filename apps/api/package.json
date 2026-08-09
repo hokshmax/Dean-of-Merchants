@@ -11,13 +11,13 @@
     "test": "echo \"no tests\" && exit 0"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.32.1",
     "@dean/ai-orchestration": "workspace:*",
     "@dean/config": "workspace:*",
     "@dean/db": "workspace:*",
+    "@dean/image-generation": "workspace:*",
     "@dean/logger": "workspace:*",
+    "@dean/pod-fulfillment": "workspace:*",
     "@dean/pricing-engine": "workspace:*",
-    "@dean/retailer-adapters": "workspace:*",
     "@dean/shared-types": "workspace:*",
     "@nestjs/common": "^10.4.15",
     "dotenv": "^16.4.7",
@@ -25,6 +25,7 @@
     "@nestjs/platform-express": "^10.4.15",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
+    "stripe": "^17.5.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {

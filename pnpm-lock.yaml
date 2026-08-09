@@ -17,9 +17,6 @@ importers:
 
   apps/api:
     dependencies:
-      '@anthropic-ai/sdk':
-        specifier: ^0.32.1
-        version: 0.32.1
       '@dean/ai-orchestration':
         specifier: workspace:*
         version: link:../../packages/ai-orchestration
@@ -29,15 +26,18 @@ importers:
       '@dean/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@dean/image-generation':
+        specifier: workspace:*
+        version: link:../../packages/image-generation
       '@dean/logger':
         specifier: workspace:*
         version: link:../../packages/logger
+      '@dean/pod-fulfillment':
+        specifier: workspace:*
+        version: link:../../packages/pod-fulfillment
       '@dean/pricing-engine':
         specifier: workspace:*
         version: link:../../packages/pricing-engine
-      '@dean/retailer-adapters':
-        specifier: workspace:*
-        version: link:../../packages/retailer-adapters
       '@dean/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
@@ -59,6 +59,9 @@ importers:
       rxjs:
         specifier: ^7.8.1
         version: 7.8.2
+      stripe:
+        specifier: ^17.5.0
+        version: 17.7.0
       zod:
         specifier: ^3.24.1
         version: 3.25.76
@@ -161,6 +164,25 @@ importers:
         specifier: ^5.7.3
         version: 5.9.3
 
+  packages/image-generation:
+    dependencies:
+      '@dean/logger':
+        specifier: workspace:*
+        version: link:../logger
+      '@google/genai':
+        specifier: ^2.15.0
+        version: 2.15.0(@modelcontextprotocol/sdk@1.30.0(zod@3.25.76))
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.5
+        version: 22.20.1
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.20.1)(terser@5.49.0)
+
   packages/logger:
     dependencies:
       pino:
@@ -177,8 +199,11 @@ importers:
         specifier: ^5.7.3
         version: 5.9.3
 
-  packages/pricing-engine:
+  packages/pod-fulfillment:
     dependencies:
+      '@dean/logger':
+        specifier: workspace:*
+        version: link:../logger
       '@dean/shared-types':
         specifier: workspace:*
         version: link:../shared-types
@@ -193,11 +218,8 @@ importers:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@22.20.1)(terser@5.49.0)
 
-  packages/retailer-adapters:
+  packages/pricing-engine:
     dependencies:
-      '@dean/logger':
-        specifier: workspace:*
-        version: link:../logger
       '@dean/shared-types':
         specifier: workspace:*
         version: link:../shared-types
@@ -2616,6 +2638,10 @@ packages:
   strip-json-comments@5.0.3:
     resolution: {integrity: sha512-1tB5mhVo7U+ETBKNf92xT4hrQa3pm0MZ0PQvuDnWgAAGHDsfp4lPSpiS6psrSiet87wyGPh9ft6wmhOMQ0hDiw==}
     engines: {node: '>=14.16'}
+
+  stripe@17.7.0:
+    resolution: {integrity: sha512-aT2BU9KkizY9SATf14WhhYVv2uOapBWX0OFWF4xvcj1mPaNotlSc2CsxpS4DS46ZueSppmCF5BX1sNYBtwBvfw==}
+    engines: {node: '>=12.*'}
 
   strtok3@10.3.5:
     resolution: {integrity: sha512-ki4hZQfh5rX0QDLLkOCj+h+CVNkqmp/CMf8v8kZpkNVK6jGQooMytqzLZYUVYIZcFZ6yDB70EfD8POcFXiF5oA==}
@@ -5137,7 +5163,6 @@ snapshots:
     dependencies:
       es-define-property: 1.0.1
       side-channel: 1.1.1
-    optional: true
 
   quick-format-unescaped@4.0.4: {}
 
@@ -5467,6 +5492,11 @@ snapshots:
   strip-bom@3.0.0: {}
 
   strip-json-comments@5.0.3: {}
+
+  stripe@17.7.0:
+    dependencies:
+      '@types/node': 22.20.1
+      qs: 6.15.3
 
   strtok3@10.3.5:
     dependencies:

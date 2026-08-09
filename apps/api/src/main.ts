@@ -9,7 +9,9 @@ async function bootstrap() {
   const env = loadEnv();
   const logger = createLogger("api");
 
-  const app = await NestFactory.create(AppModule);
+  // rawBody:true keeps the raw request buffer available (req.rawBody) alongside the parsed
+  // JSON body -- the Stripe webhook handler needs the exact raw bytes to verify its signature.
+  const app = await NestFactory.create(AppModule, { rawBody: true });
   app.enableCors();
   await app.listen(env.API_PORT);
 

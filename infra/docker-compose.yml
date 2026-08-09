@@ -30,8 +30,11 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/dean_of_merchants
       REDIS_URL: redis://redis:6379
+      DESIGN_STORAGE_DIR: /app/data/designs
     ports:
       - "3001:3001"
+    volumes:
+      - design-data:/app/data/designs
     depends_on:
       - postgres
       - redis
@@ -53,3 +56,4 @@ services:
 volumes:
   postgres-data:
   redis-data:
+  design-data:

@@ -1,26 +1,25 @@
 import { Injectable } from "@nestjs/common";
-import { createAIProvider, type AIProvider, type ExecuteSearch, type NeutralMessage } from "@dean/ai-orchestration";
+import { createAIProvider, type AIProvider, type ExecuteGenerateDesign, type NeutralMessage } from "@dean/ai-orchestration";
 import { loadEnv } from "@dean/config";
 import { createLogger } from "@dean/logger";
-import type { OfferQuote } from "@dean/shared-types";
-import { SearchService, type SearchDestination } from "../search/search.service";
+import type { Design } from "@dean/shared-types";
+import { DesignService } from "../design/design.service";
 
 const logger = createLogger("api:chat");
 
 interface SessionState {
   history: NeutralMessage[];
-  lastOffers: OfferQuote[];
+  lastDesign?: Design;
 }
 
 @Injectable()
 export class ChatService {
   private readonly provider: AIProvider;
-  // In-memory session store for Phase 1. Chat/offer persistence to Postgres
-  // (ChatSession/RetailerOffer/Quote, already modeled in packages/db/prisma/schema.prisma)
-  // lands alongside order persistence in Phase 2, once there's a real user/auth flow to key it to.
+  // In-memory session store. Chat history persistence to Postgres lands alongside a real
+  // user/auth flow, once there's an account to key it to.
   private readonly sessions = new Map<string, SessionState>();
 
-  constructor(private readonly searchService: SearchService) {
+  constructor(private readonly designService: DesignService) {
     const env = loadEnv();
 
     const apiKey = env.AI_PROVIDER === "gemini" ? env.GEMINI_API_KEY : env.ANTHROPIC_API_KEY;
@@ -32,24 +31,20 @@ export class ChatService {
     this.provider = createAIProvider(env.AI_PROVIDER, { apiKey: apiKey ?? "", model });
   }
 
-  async handleTurn(
-    sessionId: string,
-    userMessage: string,
-    destination: SearchDestination,
-  ): Promise<{ assistantText: string; offers: OfferQuote[] }> {
+  async handleTurn(sessionId: string, userMessage: string): Promise<{ assistantText: string; design?: Design }> {
     const existing = this.sessions.get(sessionId);
     const history = existing?.history ?? [];
 
-    const executeSearch: ExecuteSearch = (input) => this.searchService.search(input, destination);
+    const generateDesign: ExecuteGenerateDesign = (input) => this.designService.generate(input);
 
-    const result = await this.provider.runChatTurn({ history, userMessage, executeSearch });
+    const result = await this.provider.runChatTurn({ history, userMessage, generateDesign });
 
-    this.sessions.set(sessionId, { history: result.history, lastOffers: result.offers });
+    this.sessions.set(sessionId, { history: result.history, lastDesign: result.design });
 
-    return { assistantText: result.assistantText, offers: result.offers };
+    return { assistantText: result.assistantText, design: result.design };
   }
 
-  getLastOffers(sessionId: string): OfferQuote[] {
-    return this.sessions.get(sessionId)?.lastOffers ?? [];
+  getLastDesign(sessionId: string): Design | undefined {
+    return this.sessions.get(sessionId)?.lastDesign;
   }
 }

@@ -8,11 +8,11 @@ import type { Content, FunctionDeclaration, GoogleGenAI as GoogleGenAIClient, Pa
 import { createLogger } from "@dean/logger";
 import { SYSTEM_PROMPT } from "../system-prompt";
 import {
-  SEARCH_PRODUCTS_TOOL_NAME,
-  searchProductsInputSchema,
-  searchProductsToolDefinition,
+  GENERATE_DESIGN_TOOL_NAME,
+  generateDesignInputSchema,
+  generateDesignToolDefinition,
   type ToolDefinition,
-} from "../tools/search-products";
+} from "../tools/generate-design";
 import type { AIProvider, ChatTurnInput, ChatTurnResult, NeutralContentBlock, NeutralMessage } from "./types";
 
 const logger = createLogger("ai-orchestration:gemini");
@@ -97,12 +97,12 @@ export function createGeminiProvider(apiKey: string, model: string): AIProvider 
 
     async runChatTurn(input: ChatTurnInput): Promise<ChatTurnResult> {
       const client = await getClient();
-      const { executeSearch } = input;
+      const { generateDesign } = input;
       let history: NeutralMessage[] = [
         ...input.history,
         { role: "user", content: [{ type: "text", text: input.userMessage }] },
       ];
-      let offers: ChatTurnResult["offers"] = [];
+      let design: ChatTurnResult["design"];
 
       for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
         const response = await client.models.generateContent({
@@ -110,7 +110,7 @@ export function createGeminiProvider(apiKey: string, model: string): AIProvider 
           contents: toGeminiContents(history),
           config: {
             systemInstruction: SYSTEM_PROMPT,
-            tools: [{ functionDeclarations: [toGeminiFunctionDeclaration(searchProductsToolDefinition)] }],
+            tools: [{ functionDeclarations: [toGeminiFunctionDeclaration(generateDesignToolDefinition)] }],
           },
         });
 
@@ -128,12 +128,12 @@ export function createGeminiProvider(apiKey: string, model: string): AIProvider 
             .map((b) => b.text)
             .join("\n")
             .trim();
-          return { history, assistantText, offers };
+          return { history, assistantText, design };
         }
 
         const toolResults: NeutralContentBlock[] = [];
         for (const toolUse of toolUses) {
-          if (toolUse.name !== SEARCH_PRODUCTS_TOOL_NAME) {
+          if (toolUse.name !== GENERATE_DESIGN_TOOL_NAME) {
             toolResults.push({
               type: "tool_result",
               toolUseId: toolUse.id,
@@ -144,21 +144,21 @@ export function createGeminiProvider(apiKey: string, model: string): AIProvider 
             continue;
           }
 
-          const parsed = searchProductsInputSchema.safeParse(toolUse.input);
+          const parsed = generateDesignInputSchema.safeParse(toolUse.input);
           if (!parsed.success) {
             toolResults.push({
               type: "tool_result",
               toolUseId: toolUse.id,
               name: toolUse.name,
-              content: `Invalid search_products input: ${parsed.error.message}`,
+              content: `Invalid generate_design input: ${parsed.error.message}`,
               isError: true,
             });
             continue;
           }
 
           try {
-            const result = await executeSearch(parsed.data);
-            offers = result.offers;
+            const result = await generateDesign(parsed.data);
+            design = result.design;
             toolResults.push({
               type: "tool_result",
               toolUseId: toolUse.id,
@@ -167,12 +167,12 @@ export function createGeminiProvider(apiKey: string, model: string): AIProvider 
             });
           } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
-            logger.error({ err: message }, "search_products execution failed");
+            logger.error({ err: message }, "generate_design execution failed");
             toolResults.push({
               type: "tool_result",
               toolUseId: toolUse.id,
               name: toolUse.name,
-              content: `Search failed: ${message}`,
+              content: `Design generation failed: ${message}`,
               isError: true,
             });
           }
@@ -185,8 +185,8 @@ export function createGeminiProvider(apiKey: string, model: string): AIProvider 
       return {
         history,
         assistantText:
-          "I found some results but I'm having trouble finishing my answer -- could you try rephrasing your request?",
-        offers,
+          "I generated something but I'm having trouble finishing my answer -- could you try rephrasing your request?",
+        design,
       };
     },
   };

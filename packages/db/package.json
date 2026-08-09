@@ -2,8 +2,8 @@
   "name": "@dean/db",
   "version": "0.0.1",
   "private": true,
-  "main": "dist/src/client.js",
-  "types": "dist/src/client.d.ts",
+  "main": "dist/client.js",
+  "types": "dist/client.d.ts",
   "scripts": {
     "build": "prisma generate && tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",

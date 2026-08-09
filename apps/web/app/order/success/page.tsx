@@ -1,12 +1,12 @@
 import Link from "next/link";
 
-export default function HomePage() {
+export default function OrderSuccessPage() {
   return (
-    <main style={{ maxWidth: 640, margin: "80px auto", padding: "0 24px", textAlign: "center" }}>
-      <h1>Eldorado</h1>
+    <main style={{ maxWidth: 560, margin: "80px auto", padding: "0 24px", textAlign: "center" }}>
+      <h1>Order placed</h1>
       <p style={{ color: "#555" }}>
-        Describe a design and our AI creates the artwork. Pick a size, check out, and it gets
-        printed on a t-shirt and shipped straight to you.
+        Payment confirmed -- your design is on its way to print. You&apos;ll get a confirmation
+        email shortly.
       </p>
       <Link
         href="/chat"
@@ -20,7 +20,7 @@ export default function HomePage() {
           textDecoration: "none",
         }}
       >
-        Design something
+        Design something else
       </Link>
     </main>
   );

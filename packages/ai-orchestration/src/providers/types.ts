@@ -1,11 +1,10 @@
-import type { OfferQuote } from "@dean/shared-types";
-import type { SearchProductsInput, SearchProductsToolResult } from "../tools/search-products";
+import type { Design } from "@dean/shared-types";
+import type { GenerateDesignInput, GenerateDesignToolResult } from "../tools/generate-design";
 
 /**
  * Provider-agnostic transcript format. Every AIProvider converts to/from its own SDK's
  * message shape at its own boundary; nothing outside packages/ai-orchestration/src/providers
- * ever sees an Anthropic- or Gemini-specific type. This mirrors the RetailerAdapter pattern
- * in packages/retailer-adapters: swapping or adding a provider never touches chat/session code.
+ * ever sees an Anthropic- or Gemini-specific type.
  */
 export type NeutralContentBlock =
   | { type: "text"; text: string }
@@ -22,18 +21,18 @@ export interface NeutralMessage {
   content: NeutralContentBlock[];
 }
 
-export type ExecuteSearch = (input: SearchProductsInput) => Promise<SearchProductsToolResult>;
+export type ExecuteGenerateDesign = (input: GenerateDesignInput) => Promise<GenerateDesignToolResult>;
 
 export interface ChatTurnInput {
   history: NeutralMessage[];
   userMessage: string;
-  executeSearch: ExecuteSearch;
+  generateDesign: ExecuteGenerateDesign;
 }
 
 export interface ChatTurnResult {
   history: NeutralMessage[];
   assistantText: string;
-  offers: OfferQuote[];
+  design?: Design;
 }
 
 export type AIProviderId = "claude" | "gemini";

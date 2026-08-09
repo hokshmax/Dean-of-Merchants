@@ -6,8 +6,6 @@ import { ChatService } from "./chat.service";
 const chatRequestSchema = z.object({
   sessionId: z.string().optional(),
   message: z.string().min(1),
-  destinationCountryCode: z.string().length(2).default("US"),
-  currency: z.string().length(3).default("USD"),
 });
 
 @Controller("chat")
@@ -22,12 +20,8 @@ export class ChatController {
     }
 
     const sessionId = parsed.data.sessionId ?? randomUUID();
-    const { assistantText, offers } = await this.chatService.handleTurn(
-      sessionId,
-      parsed.data.message,
-      { countryCode: parsed.data.destinationCountryCode, currency: parsed.data.currency },
-    );
+    const { assistantText, design } = await this.chatService.handleTurn(sessionId, parsed.data.message);
 
-    return { sessionId, assistantText, offers };
+    return { sessionId, assistantText, design };
   }
 }
