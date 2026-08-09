@@ -1,6 +1,11 @@
 # Build context is the monorepo root: docker build -f apps/api/Dockerfile .
 FROM node:20-bookworm-slim
 
+# node:20-bookworm-slim doesn't include OpenSSL, which Prisma's query engine needs to talk to
+# Postgres -- without it Prisma guesses a version ("openssl-1.1.x") that may not match what's
+# actually on the system and can fail in subtler ways than a clean startup error.
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+
 RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
 
 WORKDIR /app
