@@ -1,54 +1,49 @@
 import { Injectable, NotFoundException, ServiceUnavailableException } from "@nestjs/common";
-import Stripe from "stripe";
 import { calculateRetailPrice } from "@dean/pricing-engine";
 import { getPrismaClient } from "@dean/db";
 import { loadEnv } from "@dean/config";
 import { createLogger } from "@dean/logger";
 import type { Address, SizeOption } from "@dean/shared-types";
+import { createTapClient, splitFullName } from "./tap-client";
 
 const logger = createLogger("api:order");
 
 const SIZES = ["S", "M", "L", "XL", "XXL"] as const;
 
-// A modest, expandable set of countries Stripe's hosted Checkout can collect a shipping
-// address for. Not exhaustive -- widen this list as real demand shows up from other countries.
-const SHIPPABLE_COUNTRIES: Stripe.Checkout.SessionCreateParams.ShippingAddressCollection.AllowedCountry[] = [
-  "US", "CA", "GB", "AU", "DE", "FR", "IE", "NL", "ES", "IT",
-];
-
 export interface CreateCheckoutSessionInput {
   designId: string;
   size: string;
   quantity: number;
+  recipientEmail: string;
+  shippingAddress: Address;
 }
 
 @Injectable()
 export class OrderService {
-  // undefined (not a Stripe client constructed with an empty key) when STRIPE_SECRET_KEY is
-  // unset -- the Stripe SDK throws synchronously on an empty apiKey, which would crash the
-  // whole app at boot. Every other missing key in this app degrades gracefully (warn, then fail
-  // only when actually used); this matches that instead of crash-looping the container.
-  private readonly stripe: Stripe | undefined;
+  // undefined (not a client constructed with an empty key) when TAP_SECRET_KEY is unset --
+  // createCheckoutSession/handleTapWebhook throw a clear 503 instead of crashing the app at
+  // boot the way constructing a payment SDK eagerly with an empty key can.
+  private readonly tap: ReturnType<typeof createTapClient> | undefined;
   private readonly baseCostMinorUnits: number;
   private readonly marginRate: number;
   private readonly webUrl: string;
-  private readonly webhookSecret: string;
+  private readonly apiUrl: string;
 
   constructor() {
     const env = loadEnv();
-    if (!env.STRIPE_SECRET_KEY) {
-      logger.warn("STRIPE_SECRET_KEY is not set; checkout will fail until it's configured");
+    if (!env.TAP_SECRET_KEY) {
+      logger.warn("TAP_SECRET_KEY is not set; checkout will fail until it's configured");
     }
-    this.stripe = env.STRIPE_SECRET_KEY ? new Stripe(env.STRIPE_SECRET_KEY) : undefined;
+    this.tap = env.TAP_SECRET_KEY ? createTapClient(env.TAP_SECRET_KEY) : undefined;
     this.baseCostMinorUnits = env.BASE_PRODUCT_COST_MINOR_UNITS;
     this.marginRate = env.MARGIN_RATE;
     this.webUrl = env.WEB_PUBLIC_URL.replace(/\/+$/, "");
-    this.webhookSecret = env.STRIPE_WEBHOOK_SECRET ?? "";
+    this.apiUrl = env.API_PUBLIC_URL.replace(/\/+$/, "");
   }
 
-  private requireStripe(): Stripe {
-    if (!this.stripe) throw new ServiceUnavailableException("Checkout is not configured (STRIPE_SECRET_KEY is unset)");
-    return this.stripe;
+  private requireTap() {
+    if (!this.tap) throw new ServiceUnavailableException("Checkout is not configured (TAP_SECRET_KEY is unset)");
+    return this.tap;
   }
 
   listSizes(): SizeOption[] {
@@ -67,28 +62,8 @@ export class OrderService {
     const sizeOption = this.listSizes().find((s) => s.size === input.size);
     if (!sizeOption) throw new NotFoundException(`Size "${input.size}" not available`);
 
-    const stripe = this.requireStripe();
-    const session = await stripe.checkout.sessions.create({
-      mode: "payment",
-      line_items: [
-        {
-          price_data: {
-            currency: sizeOption.retailPrice.currency.toLowerCase(),
-            product_data: {
-              name: `Custom design t-shirt (${input.size})`,
-              images: [design.imageUrl],
-            },
-            unit_amount: sizeOption.retailPrice.amountMinorUnits,
-          },
-          quantity: input.quantity,
-        },
-      ],
-      shipping_address_collection: { allowed_countries: SHIPPABLE_COUNTRIES },
-      success_url: `${this.webUrl}/order/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${this.webUrl}/chat`,
-      metadata: { designId: input.designId, size: input.size, quantity: String(input.quantity) },
-    });
-
+    // Address is known up front here (unlike the old Stripe Checkout flow, which learned it
+    // from the completed session) -- store it on the order immediately.
     const order = await prisma.order.create({
       data: {
         designId: input.designId,
@@ -97,69 +72,59 @@ export class OrderService {
         retailPriceAmountMinorUnits: sizeOption.retailPrice.amountMinorUnits,
         currency: sizeOption.retailPrice.currency,
         status: "PENDING_PAYMENT",
-        stripeCheckoutSessionId: session.id,
+        recipientEmail: input.recipientEmail,
+        shippingName: input.shippingAddress.name,
+        shippingLine1: input.shippingAddress.line1,
+        shippingLine2: input.shippingAddress.line2,
+        shippingCity: input.shippingAddress.city,
+        shippingRegion: input.shippingAddress.region,
+        shippingPostalCode: input.shippingAddress.postalCode,
+        shippingCountryCode: input.shippingAddress.countryCode,
       },
     });
-    logger.info({ orderId: order.id, sessionId: session.id }, "checkout session created");
 
-    if (!session.url) throw new Error("Stripe did not return a checkout URL");
-    return { checkoutUrl: session.url };
+    const tap = this.requireTap();
+    const { firstName, lastName } = splitFullName(input.shippingAddress.name);
+    const totalMinorUnits = sizeOption.retailPrice.amountMinorUnits * input.quantity;
+
+    const charge = await tap.createCharge({
+      amount: totalMinorUnits / 100,
+      currency: sizeOption.retailPrice.currency,
+      customer: { firstName, lastName, email: input.recipientEmail },
+      redirectUrl: `${this.webUrl}/order/success?order_id=${order.id}`,
+      postUrl: `${this.apiUrl}/orders/webhook`,
+      orderReference: order.id,
+    });
+
+    await prisma.order.update({ where: { id: order.id }, data: { paymentReference: charge.id } });
+    logger.info({ orderId: order.id, chargeId: charge.id }, "checkout charge created");
+
+    if (!charge.redirectUrl) throw new Error("Tap did not return a checkout URL");
+    return { checkoutUrl: charge.redirectUrl };
   }
 
   /**
-   * Verifies and handles a Stripe webhook event. Only "checkout.session.completed" triggers
-   * real work (marking the order paid and recording the shipping address); every other event
-   * type is accepted and ignored, since Stripe retries on non-2xx responses. Fulfillment itself
-   * (printing, shipping, tracking) happens in-house from here on, driven manually through the
-   * admin dashboard rather than an external API.
-   *
-   * Note on Stripe's shipping-address field name: this reads `session.shipping_details`, the
-   * field name Stripe's newer API versions use once shipping_address_collection is set;
-   * unverified against a live webhook since no real Stripe test keys exist yet to fire one --
-   * check this against a real event payload once STRIPE_SECRET_KEY is configured.
+   * Handles Tap's payment webhook notification. Rather than trusting the posted payload
+   * directly (Tap supports HMAC-SHA256 payload signing, but the exact header/signing-string
+   * spec wasn't confirmed against live docs), this re-fetches the charge by id from Tap's API
+   * using our own secret key -- the authoritative source of truth -- and only marks the order
+   * PAID once Tap itself confirms a CAPTURED status.
    */
-  async handleStripeWebhook(rawBody: Buffer, signature: string): Promise<void> {
-    const event = this.requireStripe().webhooks.constructEvent(rawBody, signature, this.webhookSecret);
-
-    if (event.type !== "checkout.session.completed") {
-      logger.debug({ type: event.type }, "ignoring unhandled Stripe webhook event type");
-      return;
-    }
-
-    const session = event.data.object as Stripe.Checkout.Session;
+  async handleTapWebhook(chargeId: string): Promise<void> {
+    const charge = await this.requireTap().getCharge(chargeId);
     const prisma = getPrismaClient();
-    const order = await prisma.order.findUnique({ where: { stripeCheckoutSessionId: session.id } });
+    const order = await prisma.order.findUnique({ where: { paymentReference: chargeId } });
     if (!order) {
-      logger.warn({ sessionId: session.id }, "checkout.session.completed for an unknown order");
+      logger.warn({ chargeId }, "webhook for an unknown charge/order");
       return;
     }
 
-    const shipping = session.shipping_details;
-    const recipient: Address = {
-      name: shipping?.name ?? session.customer_details?.name ?? "",
-      line1: shipping?.address?.line1 ?? "",
-      line2: shipping?.address?.line2 ?? undefined,
-      city: shipping?.address?.city ?? "",
-      region: shipping?.address?.state ?? undefined,
-      postalCode: shipping?.address?.postal_code ?? "",
-      countryCode: shipping?.address?.country ?? "",
-    };
-    const recipientEmail = session.customer_details?.email ?? undefined;
+    if (charge.status !== "CAPTURED") {
+      logger.info({ orderId: order.id, status: charge.status }, "charge not captured, leaving order as-is");
+      return;
+    }
 
-    await prisma.order.update({
-      where: { id: order.id },
-      data: {
-        status: "PAID",
-        recipientEmail,
-        shippingName: recipient.name,
-        shippingLine1: recipient.line1,
-        shippingLine2: recipient.line2,
-        shippingCity: recipient.city,
-        shippingRegion: recipient.region,
-        shippingPostalCode: recipient.postalCode,
-        shippingCountryCode: recipient.countryCode,
-      },
-    });
+    await prisma.order.update({ where: { id: order.id }, data: { status: "PAID" } });
     logger.info({ orderId: order.id }, "order paid -- queued for manual fulfillment");
   }
 
@@ -172,15 +137,5 @@ export class OrderService {
     const order = await getPrismaClient().order.findUnique({ where: { id }, include: { design: true } });
     if (!order) throw new NotFoundException(`Order "${id}" not found`);
     return order;
-  }
-
-  /** Resolves a Stripe checkout session id to the order it created, for the post-payment redirect. */
-  async getOrderIdBySession(sessionId: string): Promise<{ orderId: string }> {
-    const order = await getPrismaClient().order.findUnique({
-      where: { stripeCheckoutSessionId: sessionId },
-      select: { id: true },
-    });
-    if (!order) throw new NotFoundException(`No order found for session "${sessionId}"`);
-    return { orderId: order.id };
   }
 }

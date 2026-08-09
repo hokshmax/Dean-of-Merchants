@@ -26,9 +26,9 @@ model Order {
   quantity                     Int      @default(1)
   retailPriceAmountMinorUnits  Int
   currency                     String
-  // Unknown until Stripe Checkout completes -- Stripe's hosted page collects this itself, so
-  // the app never needs its own email/shipping form before starting checkout.
-  recipientEmail               String?
+  // Collected up front, before the payment redirect -- Tap's hosted page only handles payment,
+  // not shipping details, unlike Stripe Checkout.
+  recipientEmail                String?
   shippingName                 String?
   shippingLine1                String?
   shippingLine2                String?
@@ -39,7 +39,8 @@ model Order {
   // PENDING_PAYMENT | PAID | IN_PRODUCTION | SHIPPED | CANCELED -- fulfillment is in-house and
   // manual, driven from the admin dashboard, not an external POD API.
   status                       String   @default("PENDING_PAYMENT")
-  stripeCheckoutSessionId      String?  @unique
+  // Tap Payments charge id (e.g. "chg_..."). Generic name since it's no longer Stripe-specific.
+  paymentReference             String?  @unique
   trackingCarrier              String?
   trackingNumber               String?
   trackingUrl                  String?

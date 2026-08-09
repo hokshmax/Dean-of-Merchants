@@ -12,8 +12,7 @@
     "ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY}",
     "GEMINI_API_KEY": "${localEnv:GEMINI_API_KEY}",
     "AI_PROVIDER": "${localEnv:AI_PROVIDER}",
-    "STRIPE_SECRET_KEY": "${localEnv:STRIPE_SECRET_KEY}",
-    "STRIPE_WEBHOOK_SECRET": "${localEnv:STRIPE_WEBHOOK_SECRET}",
+    "TAP_SECRET_KEY": "${localEnv:TAP_SECRET_KEY}",
     "ADMIN_TOKEN": "${localEnv:ADMIN_TOKEN}"
   },
 

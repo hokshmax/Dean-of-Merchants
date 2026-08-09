@@ -30,17 +30,18 @@ export const envSchema = z.object({
   IMAGEN_MODEL: z.string().default("imagen-4.0-generate-001"),
 
   // Where generated design images are written on disk, and served from at
-  // `${API_PUBLIC_URL}/designs/<file>`.
+  // `${API_PUBLIC_URL}/designs/<file>`. Also where Tap's webhook posts payment notifications
+  // (`${API_PUBLIC_URL}/orders/webhook`) -- must be a real internet-reachable address, not
+  // "localhost", for that to work.
   DESIGN_STORAGE_DIR: z.string().default("./data/designs"),
   API_PUBLIC_URL: z.string().default("http://localhost:3001"),
-  // Where Stripe Checkout redirects back to after payment succeeds/is canceled.
+  // Where Tap's hosted payment page redirects back to after payment succeeds/is canceled.
   WEB_PUBLIC_URL: z.string().default("http://localhost:3000"),
 
-  // Stripe (checkout + payment). Test-mode keys from the Stripe dashboard are fine for
-  // development; STRIPE_WEBHOOK_SECRET comes from the webhook endpoint's settings once one is
-  // registered (`stripe listen` for local testing).
-  STRIPE_SECRET_KEY: optionalSecret(),
-  STRIPE_WEBHOOK_SECRET: optionalSecret(),
+  // Tap Payments (checkout + payment) -- Stripe doesn't operate in the Middle East, Tap covers
+  // UAE/Saudi/Kuwait/Bahrain/Oman/Qatar/Jordan/Egypt with one integration. Secret key from the
+  // Tap dashboard (Settings > API Keys).
+  TAP_SECRET_KEY: optionalSecret(),
 
   // Fulfillment is in-house, not an external print-on-demand API -- this is your own per-shirt
   // production cost (printing + your own shipping), in minor currency units (cents).

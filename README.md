@@ -20,13 +20,17 @@ This repo is a pnpm/Turborepo monorepo:
 2. That prompt goes to Google's Imagen image-generation model, which returns the artwork. The
    image is saved and served from the API (`/designs/<id>.png`), and shows up in the public
    gallery on the home page for anyone to browse and buy, not just the person who made it.
-3. The user picks a size and quantity, then clicks buy -- this creates a Stripe Checkout session
-   (Stripe's own hosted payment page, which also collects the shipping address) priced at your
-   own production cost (`BASE_PRODUCT_COST_MINOR_UNITS`) plus a margin (`MARGIN_RATE`, default 50%).
-4. Once Stripe confirms payment (via webhook), the order is marked `PAID` and queued for
-   **manual, in-house fulfillment** -- there's no external print-on-demand API. You print, pack,
-   and ship it yourself (or your team does), then update its status and tracking info from the
-   admin dashboard.
+3. The user picks a size and quantity, fills in their shipping address, then clicks buy -- the
+   app creates the order with that address and starts a Tap Payments charge, priced at your own
+   production cost (`BASE_PRODUCT_COST_MINOR_UNITS`) plus a margin (`MARGIN_RATE`, default 50%),
+   and redirects to Tap's hosted payment page. (Tap, not Stripe, since Stripe doesn't operate in
+   the Middle East -- Tap covers UAE/Saudi/Kuwait/Bahrain/Oman/Qatar/Jordan/Egypt with one
+   integration. Unlike Stripe Checkout, Tap's hosted page only handles payment, not shipping
+   details, which is why the app collects the address itself first.)
+4. Once Tap confirms payment (via webhook), the order is marked `PAID` and queued for **manual,
+   in-house fulfillment** -- there's no external print-on-demand API. You print, pack, and ship
+   it yourself (or your team does), then update its status and tracking info from the admin
+   dashboard.
 5. The customer can check status any time at `/order/<id>` (linked automatically after checkout).
 
 ## Admin orders dashboard
@@ -41,20 +45,19 @@ anyone with the token can see and edit every order.
 
 - **Google AI Studio** — for `GEMINI_API_KEY` (used for both chat, if `AI_PROVIDER=gemini`, and
   always for Imagen image generation). Free tier available; https://aistudio.google.com.
-- **Stripe** — free account at https://stripe.com. Use test-mode keys
-  (`STRIPE_SECRET_KEY`) for development. For the webhook, either register a real endpoint in
-  the Stripe dashboard pointing at `${API_PUBLIC_URL}/orders/webhook` and copy its signing
-  secret into `STRIPE_WEBHOOK_SECRET`, or run `stripe listen --forward-to localhost:3001/orders/webhook`
-  locally with the [Stripe CLI](https://stripe.com/docs/stripe-cli) during development, which
-  prints a temporary webhook secret to use instead.
+- **Tap Payments** — account at https://www.tap.company. Get a secret key from the dashboard
+  (**Settings → API Keys**) and set it as `TAP_SECRET_KEY`; test keys are fine for development.
+  Register a webhook endpoint pointing at `${API_PUBLIC_URL}/orders/webhook` so payment
+  confirmations reach the app -- this needs `API_PUBLIC_URL` to be a real internet-reachable
+  address, not `localhost` (a tunnel like `ngrok http 3001` works for local development).
 
 ## Test it in GitHub Codespaces (no local setup)
 
 1. On this repo's GitHub page: **Code → Codespaces → Create codespace on this branch**.
 2. Wait for the container to finish setup (installs dependencies, generates the Prisma client).
 3. Add secrets in **Settings → Secrets and variables → Codespaces**: `GEMINI_API_KEY`,
-   `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `ADMIN_TOKEN` (or `ANTHROPIC_API_KEY` instead of
-   Gemini for chat, with `AI_PROVIDER=claude`).
+   `TAP_SECRET_KEY`, `ADMIN_TOKEN` (or `ANTHROPIC_API_KEY` instead of Gemini for chat, with
+   `AI_PROVIDER=claude`).
 4. Once it's up, open a terminal and run:
    ```bash
    pnpm turbo run dev
@@ -69,7 +72,7 @@ anyone with the token can see and edit every order.
 ## Running with Docker
 
 ```bash
-cp .env.example .env      # fill in GEMINI_API_KEY, STRIPE_SECRET_KEY, ADMIN_TOKEN, etc.
+cp .env.example .env      # fill in GEMINI_API_KEY, TAP_SECRET_KEY, ADMIN_TOKEN, etc.
 docker compose -f infra/docker-compose.yml up --build
 ```
 
@@ -87,7 +90,7 @@ the Postgres/Redis volumes).
 Requires Node 20+ and pnpm (`corepack enable` gets you the right pnpm version).
 
 ```bash
-cp .env.example .env      # fill in GEMINI_API_KEY, STRIPE_SECRET_KEY, ADMIN_TOKEN, etc.
+cp .env.example .env      # fill in GEMINI_API_KEY, TAP_SECRET_KEY, ADMIN_TOKEN, etc.
 pnpm install
 pnpm --filter @dean/db prisma:generate
 pnpm turbo run dev

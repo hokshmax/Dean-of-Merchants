@@ -46,11 +46,12 @@ export const OrderSchema = z.object({
   size: z.string(),
   quantity: z.number().int().min(1),
   retailPrice: MoneySchema,
-  // Unknown until Stripe Checkout completes -- its hosted page collects both itself.
+  // Collected up front, before the payment redirect -- Tap's hosted page only handles payment,
+  // not shipping details.
   recipientEmail: z.string().email().optional(),
   shippingAddress: AddressSchema.optional(),
   status: OrderStatusSchema,
-  stripeCheckoutSessionId: z.string().optional(),
+  paymentReference: z.string().optional(),
   trackingCarrier: z.string().optional(),
   trackingNumber: z.string().optional(),
   trackingUrl: z.string().url().optional(),
