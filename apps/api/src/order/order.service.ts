@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable, NotFoundException, ServiceUnavailableException } from "@nestjs/common";
 import Stripe from "stripe";
 import { calculateRetailPrice } from "@dean/pricing-engine";
 import { getPrismaClient } from "@dean/db";
@@ -24,7 +24,11 @@ export interface CreateCheckoutSessionInput {
 
 @Injectable()
 export class OrderService {
-  private readonly stripe: Stripe;
+  // undefined (not a Stripe client constructed with an empty key) when STRIPE_SECRET_KEY is
+  // unset -- the Stripe SDK throws synchronously on an empty apiKey, which would crash the
+  // whole app at boot. Every other missing key in this app degrades gracefully (warn, then fail
+  // only when actually used); this matches that instead of crash-looping the container.
+  private readonly stripe: Stripe | undefined;
   private readonly baseCostMinorUnits: number;
   private readonly marginRate: number;
   private readonly webUrl: string;
@@ -35,11 +39,16 @@ export class OrderService {
     if (!env.STRIPE_SECRET_KEY) {
       logger.warn("STRIPE_SECRET_KEY is not set; checkout will fail until it's configured");
     }
-    this.stripe = new Stripe(env.STRIPE_SECRET_KEY ?? "");
+    this.stripe = env.STRIPE_SECRET_KEY ? new Stripe(env.STRIPE_SECRET_KEY) : undefined;
     this.baseCostMinorUnits = env.BASE_PRODUCT_COST_MINOR_UNITS;
     this.marginRate = env.MARGIN_RATE;
     this.webUrl = env.WEB_PUBLIC_URL.replace(/\/+$/, "");
     this.webhookSecret = env.STRIPE_WEBHOOK_SECRET ?? "";
+  }
+
+  private requireStripe(): Stripe {
+    if (!this.stripe) throw new ServiceUnavailableException("Checkout is not configured (STRIPE_SECRET_KEY is unset)");
+    return this.stripe;
   }
 
   listSizes(): SizeOption[] {
@@ -58,7 +67,8 @@ export class OrderService {
     const sizeOption = this.listSizes().find((s) => s.size === input.size);
     if (!sizeOption) throw new NotFoundException(`Size "${input.size}" not available`);
 
-    const session = await this.stripe.checkout.sessions.create({
+    const stripe = this.requireStripe();
+    const session = await stripe.checkout.sessions.create({
       mode: "payment",
       line_items: [
         {
@@ -109,7 +119,7 @@ export class OrderService {
    * check this against a real event payload once STRIPE_SECRET_KEY is configured.
    */
   async handleStripeWebhook(rawBody: Buffer, signature: string): Promise<void> {
-    const event = this.stripe.webhooks.constructEvent(rawBody, signature, this.webhookSecret);
+    const event = this.requireStripe().webhooks.constructEvent(rawBody, signature, this.webhookSecret);
 
     if (event.type !== "checkout.session.completed") {
       logger.debug({ type: event.type }, "ignoring unhandled Stripe webhook event type");
