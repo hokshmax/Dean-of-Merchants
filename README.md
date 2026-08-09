@@ -107,6 +107,19 @@ To stop: `Ctrl+C`, then `docker compose -f infra/docker-compose.yml down` (add `
 the Postgres/Redis volumes). To rebuild after changing code: re-run the `up --build` command
 above.
 
+### Diagnosing retailer search failures
+
+If a search comes back with no offers, the `api` container's logs will show which retailer
+adapters failed and why (`docker compose -f infra/docker-compose.yml logs api`). Beyond logging
+a reason, every adapter also saves a full-page screenshot and HTML dump of whatever it actually
+loaded whenever its selector wait fails — these land directly on your host machine in the
+`debug/` folder at the repo root (created automatically, gitignored), named like
+`ebay-2026-08-09T01-37-25-608Z.png` / `.html`. Open the screenshot first: it tells you
+immediately whether the retailer served a real (but differently-structured) results page — a
+selector-drift problem, fixable by updating the adapter's CSS selectors — or an anti-bot
+block/CAPTCHA page, which no selector change can fix and instead needs a different approach
+(residential/rotating proxies, or a paid shopping-search API instead of scraping).
+
 ## Running locally instead
 
 Requires Node 20+ and pnpm (`corepack enable` gets you the right pnpm version).

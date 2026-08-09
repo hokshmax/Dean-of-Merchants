@@ -30,7 +30,7 @@ export class SearchService {
       destinationCountryCode: destination.countryCode,
       condition: input.condition,
     };
-    const opts: SearchOptions = { timeoutMs: 15_000, maxResults: 5 };
+    const opts: SearchOptions = { timeoutMs: 30_000, maxResults: 5 };
 
     const { offers, failures } = await this.registry.searchAll(query, opts);
     if (failures.length > 0) {

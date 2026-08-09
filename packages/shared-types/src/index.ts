@@ -32,7 +32,7 @@ export const ProductQuerySchema = z.object({
 export type ProductQuery = z.infer<typeof ProductQuerySchema>;
 
 export const SearchOptionsSchema = z.object({
-  timeoutMs: z.number().int().default(15_000),
+  timeoutMs: z.number().int().default(30_000),
   maxResults: z.number().int().default(5),
 });
 export type SearchOptions = z.infer<typeof SearchOptionsSchema>;

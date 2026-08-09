@@ -1,4 +1,4 @@
-import { getSharedBrowserPool } from "@dean/scraping-kernel";
+import { captureDebugArtifact, getSharedBrowserPool } from "@dean/scraping-kernel";
 import type { ProductQuery, RetailerOfferResult, SearchOptions } from "@dean/shared-types";
 import { createLogger } from "@dean/logger";
 
@@ -22,10 +22,15 @@ export async function searchEbay(
   const page = await context.newPage();
 
   try {
+    // Split the outer per-adapter budget (registry.ts races the whole call against opts.timeoutMs)
+    // across the two sequential awaits below so neither step alone can exceed -- and silently
+    // orphan -- the outer deadline.
+    const stepTimeoutMs = Math.floor(opts.timeoutMs / 2);
     const searchUrl = `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(query.rawQuery)}`;
-    await page.goto(searchUrl, { waitUntil: "domcontentloaded", timeout: opts.timeoutMs });
-    await page.waitForSelector(".s-item", { timeout: opts.timeoutMs }).catch(() => {
+    await page.goto(searchUrl, { waitUntil: "domcontentloaded", timeout: stepTimeoutMs });
+    await page.waitForSelector(".s-item", { timeout: stepTimeoutMs }).catch(async () => {
       logger.warn({ searchUrl }, "eBay search: no .s-item results found, page markup may have changed");
+      await captureDebugArtifact(page, RETAILER_ID);
     });
 
     const items = await page.$$eval(
