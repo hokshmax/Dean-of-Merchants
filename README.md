@@ -1,8 +1,10 @@
 # Dean of Merchants
 
-A chat-driven AI shopping assistant. Tell it what you want to buy, it searches local and
-global retailers, shows the real total cost (product price + shipping + tax + our 2.5%
-fee on product price only), and — in later phases — buys it on your behalf once you pay.
+A chat-driven AI shopping assistant. Tell it what you want to buy, it searches retailers via
+their own official APIs and affiliate programs, and shows the best real price (product price +
+estimated shipping + estimated tax). Each offer links out to the retailer's own site, where you
+complete checkout yourself — Dean of Merchants never processes payment or places an order for
+you.
 
 This repo is a pnpm/Turborepo monorepo:
 
@@ -10,15 +12,62 @@ This repo is a pnpm/Turborepo monorepo:
 - `apps/api` — NestJS backend (chat orchestration, search, quotes)
 - `packages/*` — pricing engine, retailer adapters, AI orchestration, shared types, etc.
 
-See `.claude` plan history or ask in-repo for the fuller architecture writeup; this README
-is just enough to get it running.
+## Why retailer search uses official APIs, not scraping
+
+Earlier versions of this app scraped retailer search pages directly with a headless browser.
+That was tested live (including from a residential IP via Docker on a home machine, not just
+from cloud/Codespaces IPs) and every major retailer blocked it outright with an enterprise
+anti-bot challenge — eBay served a hard block page, Walmart a "Press & Hold" human-verification
+challenge, AliExpress a slider CAPTCHA, Target an unresolving bot-detection loading overlay, and
+Temu redirected straight to a forced login wall. These systems (Akamai, PerimeterX/HUMAN,
+Cloudflare-style) fingerprint the browser itself, not just the IP, so no amount of proxy
+rotation fixes it — and building automated CAPTCHA-solving to defeat them would violate every
+one of those retailers' Terms of Service.
+
+So retailer adapters now use each retailer's own official product API or affiliate program
+instead. This is slower to add coverage (each retailer needs its own signup/approval), but it's
+the only approach that's actually legal, reliable, and won't get the app's IP/account banned.
+
+## Retailer status
+
+| Retailer | Status | What's needed |
+|---|---|---|
+| eBay | **Live** (once configured) | Free eBay developer keyset — see below |
+| Best Buy | **Live** (once configured) | Free Best Buy developer key — see below |
+| Walmart | Disabled | Approval into Walmart Creator (Impact.com) |
+| Target | Disabled | Approval into the Target Affiliate Program (Impact.com) |
+| AliExpress | Disabled | Approval into the AliExpress Affiliate Program |
+| noon | Disabled | Approval into noon's affiliate program (commonly via Admitad) |
+| Temu | Disabled | Approval into Temu's affiliate/creator program |
+| Amazon | Disabled | Amazon Associates account with an existing sales history (Amazon requires ongoing qualifying sales just to keep API access active) — and the Product Advertising API is being deprecated May 15, 2026 in favor of a content-creator-focused Creators API, so this may not be worth pursuing |
+
+Disabled retailers return no results and log a warning naming the env var that would enable
+them — they don't attempt scraping or waste time on a failing request.
+
+### Setting up eBay
+
+1. Create a free account at [developer.ebay.com](https://developer.ebay.com) and generate a
+   keyset (**My Account → Application Keys**).
+2. Set `EBAY_APP_ID` and `EBAY_CERT_ID` to that keyset's Client ID / Client Secret.
+3. Optional: apply to the [eBay Partner Network](https://partnernetwork.ebay.com) and set
+   `EBAY_CAMPAIGN_ID` to your campaign ID — this tags offer links so purchases the user
+   completes on eBay attribute commission back to this app. Without it, search still works;
+   links just aren't commission-tracked.
+
+### Setting up Best Buy
+
+1. Create a free account at [developer.bestbuy.com](https://developer.bestbuy.com) and generate
+   an API key.
+2. Set `BESTBUY_API_KEY` to that key.
+3. Optional: apply to the Best Buy Affiliate Program (run via Impact.com) and set
+   `BESTBUY_AFFILIATE_LINK_TEMPLATE` to the tracked-link format from your Impact dashboard
+   (with `{URL}` as the placeholder for the real product URL) once approved.
 
 ## Test it in GitHub Codespaces (no local setup)
 
 1. On this repo's GitHub page: **Code → Codespaces → Create codespace on this branch**.
 2. Wait for the container to finish setup (installs dependencies, generates the Prisma
-   client, and downloads a headless Chromium for the retailer-search adapters — a couple
-   of minutes on first run).
+   client — a minute or two on first run).
 3. Once it's up, open a terminal in the Codespace and run:
    ```bash
    pnpm turbo run dev
@@ -34,6 +83,9 @@ is just enough to get it running.
    "Failed to fetch" in the chat UI with nothing in the API's logs at all. If you created your
    Codespace before this was added, fix it manually: **Ports tab → right-click port 3001 →
    Port Visibility → Public**.
+
+Add `EBAY_APP_ID`/`EBAY_CERT_ID`/`BESTBUY_API_KEY` etc. as Codespaces secrets (**Settings →
+Secrets and variables → Codespaces**) the same way as the AI provider keys below.
 
 ### Optional: enable real AI chat search
 
@@ -68,32 +120,15 @@ existing ones need to be rebuilt to pick up a new repository variable (a plain r
 enough for a secret you're already using, but `AI_PROVIDER` itself needs a rebuild since
 it's read once at container creation).
 
-### Note on retailer search reliability
-
-The eBay/Amazon adapters scrape live search-results pages. That's inherently fragile —
-retailer markup changes, and Amazon in particular has aggressive anti-bot detection that
-can return a CAPTCHA instead of results. A failed or empty result for one retailer is
-expected sometimes; it's isolated per-adapter and won't break the rest of the search.
-
 ## Running with Docker
 
-This is the recommended way to test the app from your own machine — in particular, to check
-whether retailer search works from your home/residential IP instead of a cloud datacenter IP
-(see "Note on retailer search reliability" above; Codespaces and most cloud VMs get blocked by
-retailer anti-bot systems because their IP ranges are flagged as non-residential).
-
-Requires [Docker](https://docs.docker.com/get-docker/) (with Compose v2, bundled with current
-Docker Desktop and Docker Engine installs).
-
 ```bash
-cp .env.example .env      # fill in ANTHROPIC_API_KEY (or GEMINI_API_KEY + AI_PROVIDER=gemini)
+cp .env.example .env      # fill in ANTHROPIC_API_KEY, EBAY_APP_ID/EBAY_CERT_ID, etc.
 docker compose -f infra/docker-compose.yml up --build
 ```
 
-This builds and starts four containers: `postgres`, `redis`, `api` (NestJS, with Playwright's
-Chromium already baked into the image), and `web` (Next.js). First build takes a few minutes —
-the `api` image is based on Playwright's official image so no separate browser-download step is
-needed.
+This builds and starts four containers: `postgres`, `redis`, `api` (NestJS), and `web`
+(Next.js).
 
 - Web (chat UI): http://localhost:3000
 - API: http://localhost:3001
@@ -107,28 +142,14 @@ To stop: `Ctrl+C`, then `docker compose -f infra/docker-compose.yml down` (add `
 the Postgres/Redis volumes). To rebuild after changing code: re-run the `up --build` command
 above.
 
-### Diagnosing retailer search failures
-
-If a search comes back with no offers, the `api` container's logs will show which retailer
-adapters failed and why (`docker compose -f infra/docker-compose.yml logs api`). Beyond logging
-a reason, every adapter also saves a full-page screenshot and HTML dump of whatever it actually
-loaded whenever its selector wait fails — these land directly on your host machine in the
-`debug/` folder at the repo root (created automatically, gitignored), named like
-`ebay-2026-08-09T01-37-25-608Z.png` / `.html`. Open the screenshot first: it tells you
-immediately whether the retailer served a real (but differently-structured) results page — a
-selector-drift problem, fixable by updating the adapter's CSS selectors — or an anti-bot
-block/CAPTCHA page, which no selector change can fix and instead needs a different approach
-(residential/rotating proxies, or a paid shopping-search API instead of scraping).
-
 ## Running locally instead
 
 Requires Node 20+ and pnpm (`corepack enable` gets you the right pnpm version).
 
 ```bash
-cp .env.example .env      # fill in ANTHROPIC_API_KEY (or GEMINI_API_KEY + AI_PROVIDER=gemini)
+cp .env.example .env      # fill in ANTHROPIC_API_KEY, EBAY_APP_ID/EBAY_CERT_ID, etc.
 pnpm install
 pnpm --filter @dean/db prisma:generate
-pnpm --filter @dean/scraping-kernel exec playwright install --with-deps chromium
 pnpm turbo run dev
 ```
 

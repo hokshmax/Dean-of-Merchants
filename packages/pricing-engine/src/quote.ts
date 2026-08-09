@@ -7,7 +7,11 @@ import type {
 } from "@dean/shared-types";
 import { addMoney, multiplyMoney, money } from "./money";
 
-export const DEFAULT_PLATFORM_FEE_RATE = 0.025;
+// The app no longer processes payment or charges the user directly -- offers link out to the
+// retailer's own checkout and revenue comes from an invisible affiliate commission instead.
+// Kept as a parameter (rather than removed) in case a future direct-checkout retailer
+// integration needs a real platform fee again.
+export const DEFAULT_PLATFORM_FEE_RATE = 0;
 export const DEFAULT_QUOTE_TTL_MS = 15 * 60 * 1000;
 
 export interface BuildQuoteInput {

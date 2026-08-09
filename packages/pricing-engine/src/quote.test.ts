@@ -46,7 +46,7 @@ describe("money", () => {
 });
 
 describe("buildQuoteBreakdown", () => {
-  it("computes the fee on product price only, excluding shipping and tax", () => {
+  it("defaults to no platform fee -- revenue is an affiliate commission, not a user charge", () => {
     // Product $100.00 (10000), shipping $12.50 (1250), tax $8.00 (800)
     const quote = buildQuoteBreakdown({
       offer: makeOffer(10_000),
@@ -56,6 +56,19 @@ describe("buildQuoteBreakdown", () => {
     expect(quote.productPrice).toEqual(money(10_000, "USD"));
     expect(quote.shippingCost).toEqual(money(1_250, "USD"));
     expect(quote.taxAmount).toEqual(money(800, "USD"));
+    expect(quote.platformFee).toEqual(money(0, "USD"));
+    expect(quote.landedCost).toEqual(money(12_050, "USD"));
+    expect(quote.totalCharge).toEqual(money(12_050, "USD"));
+  });
+
+  it("computes an explicit fee on product price only, excluding shipping and tax", () => {
+    // Product $100.00 (10000), shipping $12.50 (1250), tax $8.00 (800)
+    const quote = buildQuoteBreakdown({
+      offer: makeOffer(10_000),
+      estimate: makeEstimate(1_250, 800),
+      platformFeeRate: 0.025,
+    });
+
     // 2.5% of $100.00 = $2.50 (250 cents) -- NOT 2.5% of the $120.50 landed cost
     expect(quote.platformFee).toEqual(money(250, "USD"));
     expect(quote.landedCost).toEqual(money(12_050, "USD"));

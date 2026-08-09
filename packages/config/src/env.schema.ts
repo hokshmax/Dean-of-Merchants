@@ -32,7 +32,23 @@ export const envSchema = z.object({
   PAYPAL_CLIENT_SECRET: z.string().optional(),
   PAYPAL_ENV: z.enum(["sandbox", "live"]).default("sandbox"),
 
-  PLATFORM_FEE_RATE: z.coerce.number().default(0.025),
+  // Retailer search now goes through each retailer's own official API/affiliate program
+  // instead of scraping (which every retailer's anti-bot protection blocked outright, even
+  // from a residential IP -- confirmed via debug screenshots). Adapters read these directly
+  // from process.env rather than through the parsed Env object; they're declared here purely
+  // as the documented list of what this app can be configured with. Retailers without a public
+  // API (Walmart, Target, AliExpress, noon, Temu, Amazon) stay disabled until their affiliate
+  // programs are approved and a real integration is written against real credentials.
+  EBAY_APP_ID: optionalSecret(),
+  EBAY_CERT_ID: optionalSecret(),
+  EBAY_CAMPAIGN_ID: z.string().optional(),
+  BESTBUY_API_KEY: optionalSecret(),
+  BESTBUY_AFFILIATE_LINK_TEMPLATE: z.string().optional(),
+
+  // The app no longer processes payment or charges a platform fee -- it earns affiliate
+  // commission from retailers instead, invisible to the user. Kept configurable rather than
+  // deleted in case a future direct-checkout retailer integration needs it again.
+  PLATFORM_FEE_RATE: z.coerce.number().default(0),
 
   API_PORT: z.coerce.number().default(3001),
   WEB_PORT: z.coerce.number().default(3000),

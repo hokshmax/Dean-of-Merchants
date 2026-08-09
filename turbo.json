@@ -26,6 +26,9 @@
     },
     "@dean/db#build": {
       "dependsOn": ["^build", "prisma:generate"]
+    },
+    "@dean/web#typecheck": {
+      "dependsOn": ["^build", "build"]
     }
   }
 }

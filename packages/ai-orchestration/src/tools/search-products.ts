@@ -42,8 +42,9 @@ export const searchProductsToolDefinition: ToolDefinition = {
   name: SEARCH_PRODUCTS_TOOL_NAME,
   description:
     "Search local and global retailers for priced offers matching a product request. " +
-    "Returns ranked offers with full landed-cost breakdowns (product price, shipping, tax, " +
-    "and platform fee). Does not purchase anything.",
+    "Returns ranked offers with estimated landed-cost breakdowns (product price, shipping, " +
+    "and tax). Each offer links to the retailer's own site to complete checkout -- this tool " +
+    "does not purchase anything.",
   parameters: {
     type: "object",
     properties: {

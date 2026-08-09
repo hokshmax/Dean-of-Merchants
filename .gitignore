@@ -8,4 +8,3 @@ dist/
 .DS_Store
 coverage/
 packages/db/generated/
-debug/

@@ -1,84 +1,109 @@
-import { captureDebugArtifact, getSharedBrowserPool } from "@dean/scraping-kernel";
 import type { ProductQuery, RetailerOfferResult, SearchOptions } from "@dean/shared-types";
 import { createLogger } from "@dean/logger";
+import { getEbayAccessToken } from "./oauth-token";
 
 const logger = createLogger("retailer-adapters:ebay");
 
 const RETAILER_ID = "ebay";
 const RETAILER_NAME = "eBay";
+const SEARCH_URL = "https://api.ebay.com/buy/browse/v1/item_summary/search";
+
+interface EbayItemSummary {
+  itemId: string;
+  title: string;
+  itemWebUrl: string;
+  price?: { value: string; currency: string };
+  image?: { imageUrl: string };
+}
+
+interface EbaySearchResponse {
+  itemSummaries?: EbayItemSummary[];
+}
 
 /**
- * Scrapes eBay's public search results page. Selectors below match eBay's search-results
- * markup as of late 2025/2026 and WILL drift -- this is exactly the fragility called out in
- * the architecture's risk-mitigation section. AdapterRunLog (Phase 2/3) should alert when the
- * extracted-item count silently drops to 0, which is the first sign of a selector change.
+ * Uses eBay's official Browse API instead of scraping the search-results page -- scraping was
+ * consistently blocked by an anti-bot challenge regardless of source IP (confirmed via debug
+ * screenshots showing eBay's "SORRY - Something went wrong" block page even from a residential
+ * IP). Requires a free eBay developer keyset (EBAY_APP_ID/EBAY_CERT_ID); returns no results
+ * (rather than attempting an unauthenticated call) when unset.
+ *
+ * When EBAY_CAMPAIGN_ID is set (an eBay Partner Network campaign ID), returned item URLs are
+ * tagged with EPN tracking parameters so purchases the user completes on eBay attribute
+ * commission back to this app. Written to EPN's documented manual-link-tagging format;
+ * unverified against a live campaign since no real campaign ID has been tested yet.
  */
 export async function searchEbay(
   query: ProductQuery,
   opts: SearchOptions,
 ): Promise<RetailerOfferResult[]> {
-  const pool = getSharedBrowserPool();
-  const context = await pool.acquireContext({ adapterId: RETAILER_ID });
-  const page = await context.newPage();
+  const appId = process.env.EBAY_APP_ID;
+  const certId = process.env.EBAY_CERT_ID;
+  if (!appId || !certId) {
+    logger.warn("eBay adapter not configured -- set EBAY_APP_ID and EBAY_CERT_ID to enable it");
+    return [];
+  }
+
+  const accessToken = await getEbayAccessToken(appId, certId);
+  const url = new URL(SEARCH_URL);
+  url.searchParams.set("q", query.rawQuery);
+  url.searchParams.set("limit", String(opts.maxResults));
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), opts.timeoutMs);
 
   try {
-    // Split the outer per-adapter budget (registry.ts races the whole call against opts.timeoutMs)
-    // across the two sequential awaits below so neither step alone can exceed -- and silently
-    // orphan -- the outer deadline.
-    const stepTimeoutMs = Math.floor(opts.timeoutMs / 2);
-    const searchUrl = `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(query.rawQuery)}`;
-    await page.goto(searchUrl, { waitUntil: "domcontentloaded", timeout: stepTimeoutMs });
-    await page.waitForSelector(".s-item", { timeout: stepTimeoutMs }).catch(async () => {
-      logger.warn({ searchUrl }, "eBay search: no .s-item results found, page markup may have changed");
-      await captureDebugArtifact(page, RETAILER_ID);
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "X-EBAY-C-MARKETPLACE-ID": "EBAY_US",
+      },
+      signal: controller.signal,
     });
 
-    const items = await page.$$eval(
-      ".s-item",
-      (nodes, maxResults) =>
-        nodes
-          .slice(0, maxResults)
-          .map((node) => {
-            const title = node.querySelector(".s-item__title")?.textContent?.trim() ?? "";
-            const priceText = node.querySelector(".s-item__price")?.textContent?.trim() ?? "";
-            const url = node.querySelector<HTMLAnchorElement>(".s-item__link")?.href ?? "";
-            const imageUrl = node.querySelector<HTMLImageElement>(".s-item__image-img")?.src;
-            return { title, priceText, url, imageUrl };
-          })
-          .filter((item) => item.title && item.url && item.priceText),
-      opts.maxResults,
-    );
+    if (!response.ok) {
+      const body = await response.text().catch(() => "");
+      logger.warn({ status: response.status, body }, "eBay Browse API request failed");
+      return [];
+    }
 
-    return items
+    const data = (await response.json()) as EbaySearchResponse;
+    return (data.itemSummaries ?? [])
       .map((item) => parseOffer(item))
       .filter((offer): offer is RetailerOfferResult => offer !== null);
   } finally {
-    await page.close();
-    await pool.releaseContext(context);
+    clearTimeout(timeout);
   }
 }
 
-function parseOffer(item: {
-  title: string;
-  priceText: string;
-  url: string;
-  imageUrl?: string;
-}): RetailerOfferResult | null {
-  const priceMatch = item.priceText.replace(/,/g, "").match(/([\d]+\.\d{2})/);
-  if (!priceMatch) return null;
+function parseOffer(item: EbayItemSummary): RetailerOfferResult | null {
+  if (!item.price) return null;
 
-  const amountMinorUnits = Math.round(parseFloat(priceMatch[1]) * 100);
-  const offerId = `${RETAILER_ID}:${Buffer.from(item.url).toString("base64url").slice(0, 24)}`;
+  const amountMinorUnits = Math.round(parseFloat(item.price.value) * 100);
+  if (Number.isNaN(amountMinorUnits)) return null;
+
+  const offerId = `${RETAILER_ID}:${Buffer.from(item.itemId).toString("base64url").slice(0, 24)}`;
 
   return {
     retailerId: RETAILER_ID,
     retailerName: RETAILER_NAME,
     offerId,
     title: item.title,
-    url: item.url,
-    imageUrl: item.imageUrl,
-    price: { amountMinorUnits, currency: "USD" },
+    url: applyEpnTracking(item.itemWebUrl),
+    imageUrl: item.image?.imageUrl,
+    price: { amountMinorUnits, currency: item.price.currency },
     availability: "in_stock",
     scrapedAt: new Date(),
   };
+}
+
+function applyEpnTracking(itemWebUrl: string): string {
+  const campaignId = process.env.EBAY_CAMPAIGN_ID;
+  if (!campaignId) return itemWebUrl;
+
+  const url = new URL(itemWebUrl);
+  url.searchParams.set("campid", campaignId);
+  url.searchParams.set("toolid", "10001");
+  url.searchParams.set("mkevt", "1");
+  url.searchParams.set("mkcid", "1");
+  return url.toString();
 }
