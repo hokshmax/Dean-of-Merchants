@@ -6,6 +6,7 @@ import { OrderService } from "./order.service";
 const createCheckoutSessionSchema = z.object({
   designId: z.string().min(1),
   size: z.string().min(1),
+  color: z.string().min(1),
   quantity: z.number().int().min(1).max(10).default(1),
   recipientEmail: z.string().email(),
   shippingAddress: AddressSchema,

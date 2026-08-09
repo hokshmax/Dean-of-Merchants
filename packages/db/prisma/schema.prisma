@@ -23,6 +23,7 @@ model Order {
   designId                     String
   design                       Design   @relation(fields: [designId], references: [id])
   size                         String
+  color                        String   @default("Black")
   quantity                     Int      @default(1)
   retailPriceAmountMinorUnits  Int
   currency                     String

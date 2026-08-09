@@ -8,6 +8,7 @@ interface AdminOrder {
   id: string;
   design: { id: string; prompt: string; imageUrl: string };
   size: string;
+  color: string;
   quantity: number;
   retailPriceAmountMinorUnits: number;
   currency: string;
@@ -28,6 +29,8 @@ interface AdminOrder {
 
 const STATUSES = ["PENDING_PAYMENT", "PAID", "IN_PRODUCTION", "SHIPPED", "CANCELED"];
 const TOKEN_STORAGE_KEY = "eldorado_admin_token";
+
+const inputStyle = { padding: 6, borderRadius: 6, border: "1px solid var(--surface-border)", background: "var(--surface)" };
 
 export default function AdminPage() {
   const [token, setToken] = useState<string | undefined>(undefined);
@@ -110,22 +113,25 @@ export default function AdminPage() {
             value={tokenInput}
             onChange={(e) => setTokenInput(e.target.value)}
             placeholder="Admin token"
-            style={{ padding: 10, borderRadius: 8, border: "1px solid #ccc" }}
+            style={{ padding: 10, borderRadius: 8, border: "1px solid var(--surface-border)" }}
           />
-          <button type="submit" style={{ padding: "10px 20px", borderRadius: 8 }}>
+          <button
+            type="submit"
+            style={{ padding: "10px 20px", borderRadius: 8, background: "var(--accent-gold)", color: "#1a1305", fontWeight: 700, border: "none", cursor: "pointer" }}
+          >
             Enter
           </button>
         </form>
-        {error && <div style={{ color: "crimson", marginTop: 12 }}>{error}</div>}
+        {error && <div style={{ color: "#ff6b6b", marginTop: 12 }}>{error}</div>}
       </main>
     );
   }
 
   return (
-    <main style={{ maxWidth: 1100, margin: "40px auto", padding: "0 24px" }}>
+    <main style={{ maxWidth: 1100, margin: "40px auto", padding: "0 24px 80px" }}>
       <h1>Orders</h1>
-      {loading && <div style={{ color: "#777" }}>Loading...</div>}
-      {error && <div style={{ color: "crimson" }}>{error}</div>}
+      {loading && <div style={{ color: "var(--text-secondary)" }}>Loading...</div>}
+      {error && <div style={{ color: "#ff6b6b" }}>{error}</div>}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         {orders.map((order) => {
@@ -135,24 +141,26 @@ export default function AdminPage() {
             .join(", ");
 
           return (
-            <div key={order.id} style={{ border: "1px solid #ddd", borderRadius: 12, padding: 16, display: "flex", gap: 16 }}>
+            <div key={order.id} className="surface-card" style={{ padding: 16, display: "flex", gap: 16 }}>
               {/* eslint-disable-next-line @next/next/no-img-element -- generated images are server-hosted */}
               <img src={order.design.imageUrl} alt={order.design.prompt} style={{ width: 96, height: 96, borderRadius: 8, objectFit: "cover" }} />
 
               <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6, fontSize: 14 }}>
                 <div>
-                  <strong>{order.id}</strong> -- {order.size} x{order.quantity} --{" "}
-                  {formatMoney({ amountMinorUnits: order.retailPriceAmountMinorUnits, currency: order.currency })}
+                  <strong>{order.id}</strong> -- {order.size}, {order.color} x{order.quantity} --{" "}
+                  <span style={{ color: "var(--accent-gold)" }}>
+                    {formatMoney({ amountMinorUnits: order.retailPriceAmountMinorUnits, currency: order.currency })}
+                  </span>
                 </div>
-                <div style={{ color: "#555" }}>{order.recipientEmail ?? "no email yet"}</div>
-                <div style={{ color: "#555" }}>{order.shippingName}{address ? ` -- ${address}` : ""}</div>
-                <div style={{ color: "#999" }}>{new Date(order.createdAt).toLocaleString()}</div>
+                <div style={{ color: "var(--text-secondary)" }}>{order.recipientEmail ?? "no email yet"}</div>
+                <div style={{ color: "var(--text-secondary)" }}>{order.shippingName}{address ? ` -- ${address}` : ""}</div>
+                <div style={{ color: "var(--text-secondary)", opacity: 0.7 }}>{new Date(order.createdAt).toLocaleString()}</div>
 
-                <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 4 }}>
+                <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 4, flexWrap: "wrap" }}>
                   <select
                     value={draft.status ?? order.status}
                     onChange={(e) => updateDraft(order.id, { status: e.target.value })}
-                    style={{ padding: 6, borderRadius: 6, border: "1px solid #ccc" }}
+                    style={inputStyle}
                   >
                     {STATUSES.map((s) => (
                       <option key={s} value={s}>
@@ -164,24 +172,24 @@ export default function AdminPage() {
                     placeholder="Carrier"
                     defaultValue={order.trackingCarrier ?? ""}
                     onChange={(e) => updateDraft(order.id, { trackingCarrier: e.target.value })}
-                    style={{ padding: 6, borderRadius: 6, border: "1px solid #ccc", width: 100 }}
+                    style={{ ...inputStyle, width: 100 }}
                   />
                   <input
                     placeholder="Tracking number"
                     defaultValue={order.trackingNumber ?? ""}
                     onChange={(e) => updateDraft(order.id, { trackingNumber: e.target.value })}
-                    style={{ padding: 6, borderRadius: 6, border: "1px solid #ccc", width: 140 }}
+                    style={{ ...inputStyle, width: 140 }}
                   />
                   <input
                     placeholder="Tracking URL"
                     defaultValue={order.trackingUrl ?? ""}
                     onChange={(e) => updateDraft(order.id, { trackingUrl: e.target.value })}
-                    style={{ padding: 6, borderRadius: 6, border: "1px solid #ccc", width: 180 }}
+                    style={{ ...inputStyle, width: 180 }}
                   />
                   <button
                     onClick={() => saveOrder(order.id)}
                     disabled={!drafts[order.id]}
-                    style={{ padding: "6px 14px", borderRadius: 6, background: "#111", color: "#fff", border: "none", cursor: "pointer" }}
+                    style={{ padding: "6px 14px", borderRadius: 6, background: "var(--accent-gold)", color: "#1a1305", fontWeight: 700, border: "none", cursor: "pointer" }}
                   >
                     Save
                   </button>

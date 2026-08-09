@@ -21,7 +21,7 @@ export function DesignGallery() {
   if (designs.length === 0) return null;
 
   return (
-    <section style={{ maxWidth: 960, margin: "48px auto", padding: "0 24px" }}>
+    <section style={{ maxWidth: 960, margin: "48px auto", padding: "0 24px 80px" }}>
       <h2 style={{ fontSize: 20, marginBottom: 16 }}>Designs the community made</h2>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 12 }}>
@@ -29,20 +29,26 @@ export function DesignGallery() {
           <button
             key={design.id}
             onClick={() => setSelected(design)}
-            style={{ border: "none", padding: 0, cursor: "pointer", background: "none" }}
+            style={{
+              border: selected?.id === design.id ? "2px solid var(--accent-gold)" : "2px solid transparent",
+              borderRadius: 12,
+              padding: 0,
+              cursor: "pointer",
+              background: "none",
+            }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element -- generated images are server-hosted */}
             <img
               src={design.imageUrl}
               alt={design.prompt}
-              style={{ width: "100%", aspectRatio: "1", objectFit: "cover", borderRadius: 8 }}
+              style={{ width: "100%", aspectRatio: "1", objectFit: "cover", borderRadius: 10, display: "block" }}
             />
           </button>
         ))}
       </div>
 
       {selected && (
-        <div style={{ maxWidth: 360, margin: "24px auto 0" }}>
+        <div className="fade-in-up" style={{ maxWidth: 360, margin: "24px auto 0" }}>
           <DesignCard design={selected} />
         </div>
       )}

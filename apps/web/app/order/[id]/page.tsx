@@ -9,6 +9,7 @@ interface OrderDetail {
   id: string;
   design: { imageUrl: string; prompt: string };
   size: string;
+  color: string;
   quantity: number;
   retailPriceAmountMinorUnits: number;
   currency: string;
@@ -45,7 +46,7 @@ export default function OrderTrackingPage() {
   if (error) {
     return (
       <main style={{ maxWidth: 480, margin: "80px auto", padding: "0 24px", textAlign: "center" }}>
-        <p style={{ color: "crimson" }}>{error}</p>
+        <p style={{ color: "#ff6b6b" }}>{error}</p>
       </main>
     );
   }
@@ -53,43 +54,43 @@ export default function OrderTrackingPage() {
   if (!order) {
     return (
       <main style={{ maxWidth: 480, margin: "80px auto", padding: "0 24px", textAlign: "center" }}>
-        <p style={{ color: "#777" }}>Loading...</p>
+        <p style={{ color: "var(--text-secondary)" }}>Loading...</p>
       </main>
     );
   }
 
   return (
-    <main style={{ maxWidth: 480, margin: "60px auto", padding: "0 24px" }}>
+    <main style={{ maxWidth: 480, margin: "60px auto", padding: "0 24px 80px" }}>
       <h1>Order status</h1>
 
-      {/* eslint-disable-next-line @next/next/no-img-element -- generated images are server-hosted */}
-      <img
-        src={order.design.imageUrl}
-        alt={order.design.prompt}
-        style={{ width: "100%", borderRadius: 8, marginBottom: 16 }}
-      />
+      <div className="surface-card" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+        {/* eslint-disable-next-line @next/next/no-img-element -- generated images are server-hosted */}
+        <img src={order.design.imageUrl} alt={order.design.prompt} style={{ width: "100%", borderRadius: 12 }} />
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 15 }}>
-        <div style={{ fontWeight: 700, fontSize: 18 }}>{STATUS_LABELS[order.status] ?? order.status}</div>
-        <div>
-          {order.size} x{order.quantity} --{" "}
-          {formatMoney({ amountMinorUnits: order.retailPriceAmountMinorUnits, currency: order.currency })}
-        </div>
-        <div style={{ color: "#777" }}>Ordered {new Date(order.createdAt).toLocaleDateString()}</div>
-        <div style={{ color: "#777" }}>Order ID: {order.id}</div>
-
-        {order.trackingNumber && (
-          <div style={{ marginTop: 12, padding: 12, background: "#f2f2f2", borderRadius: 8 }}>
-            <div>
-              {order.trackingCarrier ?? "Tracking"}: {order.trackingNumber}
-            </div>
-            {order.trackingUrl && (
-              <a href={order.trackingUrl} target="_blank" rel="noreferrer">
-                Track shipment
-              </a>
-            )}
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 15 }}>
+          <div style={{ fontWeight: 700, fontSize: 18, color: "var(--accent-gold)" }}>
+            {STATUS_LABELS[order.status] ?? order.status}
           </div>
-        )}
+          <div>
+            {order.size}, {order.color} x{order.quantity} --{" "}
+            {formatMoney({ amountMinorUnits: order.retailPriceAmountMinorUnits, currency: order.currency })}
+          </div>
+          <div style={{ color: "var(--text-secondary)" }}>Ordered {new Date(order.createdAt).toLocaleDateString()}</div>
+          <div style={{ color: "var(--text-secondary)" }}>Order ID: {order.id}</div>
+
+          {order.trackingNumber && (
+            <div style={{ marginTop: 8, padding: 12, background: "var(--surface-strong)", borderRadius: 10 }}>
+              <div>
+                {order.trackingCarrier ?? "Tracking"}: {order.trackingNumber}
+              </div>
+              {order.trackingUrl && (
+                <a href={order.trackingUrl} target="_blank" rel="noreferrer" style={{ color: "var(--accent-gold)" }}>
+                  Track shipment
+                </a>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </main>
   );

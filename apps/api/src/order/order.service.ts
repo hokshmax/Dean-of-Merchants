@@ -13,6 +13,7 @@ const SIZES = ["S", "M", "L", "XL", "XXL"] as const;
 export interface CreateCheckoutSessionInput {
   designId: string;
   size: string;
+  color: string;
   quantity: number;
   recipientEmail: string;
   shippingAddress: Address;
@@ -68,6 +69,7 @@ export class OrderService {
       data: {
         designId: input.designId,
         size: input.size,
+        color: input.color,
         quantity: input.quantity,
         retailPriceAmountMinorUnits: sizeOption.retailPrice.amountMinorUnits,
         currency: sizeOption.retailPrice.currency,

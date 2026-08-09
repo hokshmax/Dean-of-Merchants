@@ -19,7 +19,7 @@ export default function OrderSuccessPage() {
   return (
     <main style={{ maxWidth: 560, margin: "80px auto", padding: "0 24px", textAlign: "center" }}>
       <h1>Order placed</h1>
-      <p style={{ color: "#555" }}>{error ?? "Payment confirmed -- loading your order..."}</p>
+      <p style={{ color: error ? "#ff6b6b" : "var(--text-secondary)" }}>{error ?? "Payment confirmed -- loading your order..."}</p>
     </main>
   );
 }

@@ -36,6 +36,17 @@ export const SizeOptionSchema = z.object({
 });
 export type SizeOption = z.infer<typeof SizeOptionSchema>;
 
+/** Fixed t-shirt color palette shown as visual swatches -- color is cosmetic only (fulfillment
+ * is manual/in-house, so it doesn't affect price or catalog lookups the way size does). */
+export const TSHIRT_COLORS = [
+  { name: "Black", hex: "#111111" },
+  { name: "White", hex: "#f5f5f5" },
+  { name: "Navy", hex: "#1e3a5f" },
+  { name: "Red", hex: "#c0392b" },
+  { name: "Gray", hex: "#888888" },
+] as const;
+export type TShirtColorName = (typeof TSHIRT_COLORS)[number]["name"];
+
 export const OrderStatusSchema = z.enum(["PENDING_PAYMENT", "PAID", "IN_PRODUCTION", "SHIPPED", "CANCELED"]);
 export type OrderStatus = z.infer<typeof OrderStatusSchema>;
 
@@ -44,6 +55,7 @@ export const OrderSchema = z.object({
   designId: z.string(),
   imageUrl: z.string().url(),
   size: z.string(),
+  color: z.string(),
   quantity: z.number().int().min(1),
   retailPrice: MoneySchema,
   // Collected up front, before the payment redirect -- Tap's hosted page only handles payment,
