@@ -1,52 +1,44 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Design, Money } from "@dean/shared-types";
+import type { Design, SizeOption } from "@dean/shared-types";
 import { formatMoney } from "../lib/format";
 import { resolveApiUrl } from "../lib/api-url";
 
-interface Variant {
-  variantId: number;
-  productName: string;
-  size: string;
-  color: string;
-  retailPrice: Money;
-}
-
 export function DesignCard({ design }: { design: Design }) {
-  const [variants, setVariants] = useState<Variant[]>([]);
-  const [selectedVariantId, setSelectedVariantId] = useState<number | undefined>(undefined);
+  const [sizes, setSizes] = useState<SizeOption[]>([]);
+  const [selectedSize, setSelectedSize] = useState<string | undefined>(undefined);
   const [quantity, setQuantity] = useState(1);
-  const [loadingVariants, setLoadingVariants] = useState(true);
+  const [loadingSizes, setLoadingSizes] = useState(true);
   const [checkingOut, setCheckingOut] = useState(false);
   const [error, setError] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     let cancelled = false;
-    setLoadingVariants(true);
-    fetch(`${resolveApiUrl()}/orders/variants`)
+    setLoadingSizes(true);
+    fetch(`${resolveApiUrl()}/orders/sizes`)
       .then((res) => res.json())
-      .then((data: { variants: Variant[] }) => {
+      .then((data: { sizes: SizeOption[] }) => {
         if (cancelled) return;
-        setVariants(data.variants);
-        setSelectedVariantId(data.variants[0]?.variantId);
+        setSizes(data.sizes);
+        setSelectedSize(data.sizes[0]?.size);
       })
       .catch((err) => !cancelled && setError(err instanceof Error ? err.message : String(err)))
-      .finally(() => !cancelled && setLoadingVariants(false));
+      .finally(() => !cancelled && setLoadingSizes(false));
     return () => {
       cancelled = true;
     };
   }, []);
 
   async function buy() {
-    if (!selectedVariantId) return;
+    if (!selectedSize) return;
     setCheckingOut(true);
     setError(undefined);
     try {
       const res = await fetch(`${resolveApiUrl()}/orders/checkout`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ designId: design.id, variantId: selectedVariantId, quantity }),
+        body: JSON.stringify({ designId: design.id, size: selectedSize, quantity }),
       });
       if (!res.ok) throw new Error(`Checkout failed: ${res.status}`);
       const data: { checkoutUrl: string } = await res.json();
@@ -57,7 +49,7 @@ export function DesignCard({ design }: { design: Design }) {
     }
   }
 
-  const selectedVariant = variants.find((v) => v.variantId === selectedVariantId);
+  const selectedOption = sizes.find((s) => s.size === selectedSize);
 
   return (
     <div
@@ -77,20 +69,20 @@ export function DesignCard({ design }: { design: Design }) {
         style={{ width: "100%", borderRadius: 8, objectFit: "cover" }}
       />
 
-      {loadingVariants && <div style={{ color: "#777" }}>Loading sizes...</div>}
+      {loadingSizes && <div style={{ color: "#777" }}>Loading sizes...</div>}
 
-      {!loadingVariants && variants.length > 0 && (
+      {!loadingSizes && sizes.length > 0 && (
         <>
           <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
-            Size / color
+            Size
             <select
-              value={selectedVariantId}
-              onChange={(e) => setSelectedVariantId(Number(e.target.value))}
+              value={selectedSize}
+              onChange={(e) => setSelectedSize(e.target.value)}
               style={{ padding: 8, borderRadius: 8, border: "1px solid #ccc" }}
             >
-              {variants.map((v) => (
-                <option key={v.variantId} value={v.variantId}>
-                  {v.size} - {v.color} ({formatMoney(v.retailPrice)})
+              {sizes.map((s) => (
+                <option key={s.size} value={s.size}>
+                  {s.size} ({formatMoney(s.retailPrice)})
                 </option>
               ))}
             </select>
@@ -108,13 +100,13 @@ export function DesignCard({ design }: { design: Design }) {
             />
           </label>
 
-          {selectedVariant && (
+          {selectedOption && (
             <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, fontSize: 18 }}>
               <span>Total</span>
               <span>
                 {formatMoney({
-                  amountMinorUnits: selectedVariant.retailPrice.amountMinorUnits * quantity,
-                  currency: selectedVariant.retailPrice.currency,
+                  amountMinorUnits: selectedOption.retailPrice.amountMinorUnits * quantity,
+                  currency: selectedOption.retailPrice.currency,
                 })}
               </span>
             </div>
@@ -122,7 +114,7 @@ export function DesignCard({ design }: { design: Design }) {
 
           <button
             onClick={buy}
-            disabled={checkingOut || !selectedVariantId}
+            disabled={checkingOut || !selectedSize}
             style={{
               padding: "10px 12px",
               borderRadius: 8,

@@ -12,9 +12,9 @@
     "ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY}",
     "GEMINI_API_KEY": "${localEnv:GEMINI_API_KEY}",
     "AI_PROVIDER": "${localEnv:AI_PROVIDER}",
-    "PRINTFUL_API_KEY": "${localEnv:PRINTFUL_API_KEY}",
     "STRIPE_SECRET_KEY": "${localEnv:STRIPE_SECRET_KEY}",
-    "STRIPE_WEBHOOK_SECRET": "${localEnv:STRIPE_WEBHOOK_SECRET}"
+    "STRIPE_WEBHOOK_SECRET": "${localEnv:STRIPE_WEBHOOK_SECRET}",
+    "ADMIN_TOKEN": "${localEnv:ADMIN_TOKEN}"
   },
 
   "forwardPorts": [3000, 3001],

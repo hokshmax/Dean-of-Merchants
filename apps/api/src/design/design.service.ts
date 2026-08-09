@@ -45,4 +45,12 @@ export class DesignService {
     const design: Design = { id, prompt: input.prompt, imageUrl, createdAt };
     return { design };
   }
+
+  /** Most-recent-first feed for the public gallery -- anyone's generated design is browsable. */
+  async listRecent(limit = 24): Promise<Design[]> {
+    return getPrismaClient().design.findMany({
+      orderBy: { createdAt: "desc" },
+      take: Math.min(limit, 100),
+    });
+  }
 }

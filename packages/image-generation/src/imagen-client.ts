@@ -46,7 +46,7 @@ export function parseGenerateImagesResponse(response: RawGenerateImagesResponse,
  * Wraps Google's Imagen image-generation models behind a minimal interface. Returns raw image
  * bytes rather than a URL -- Imagen's API only returns base64 image data, so whatever calls
  * this is responsible for persisting the bytes somewhere with a publicly reachable URL (needed
- * later to hand the design to Printful's order API, which fetches print files by URL).
+ * for the design to show up in chat, the public gallery, and printed order records).
  */
 export function createImagenClient(apiKey: string, model: string = DEFAULT_MODEL): ImagenClient {
   let clientPromise: Promise<GoogleGenAIClient> | undefined;

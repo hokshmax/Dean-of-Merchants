@@ -32,9 +32,6 @@ importers:
       '@dean/logger':
         specifier: workspace:*
         version: link:../../packages/logger
-      '@dean/pod-fulfillment':
-        specifier: workspace:*
-        version: link:../../packages/pod-fulfillment
       '@dean/pricing-engine':
         specifier: workspace:*
         version: link:../../packages/pricing-engine
@@ -198,25 +195,6 @@ importers:
       typescript:
         specifier: ^5.7.3
         version: 5.9.3
-
-  packages/pod-fulfillment:
-    dependencies:
-      '@dean/logger':
-        specifier: workspace:*
-        version: link:../logger
-      '@dean/shared-types':
-        specifier: workspace:*
-        version: link:../shared-types
-    devDependencies:
-      '@types/node':
-        specifier: ^22.10.5
-        version: 22.20.1
-      typescript:
-        specifier: ^5.7.3
-        version: 5.9.3
-      vitest:
-        specifier: ^2.1.8
-        version: 2.1.9(@types/node@22.20.1)(terser@5.49.0)
 
   packages/pricing-engine:
     dependencies:

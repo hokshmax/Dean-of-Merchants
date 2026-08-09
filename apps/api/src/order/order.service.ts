@@ -1,13 +1,14 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import Stripe from "stripe";
-import { createPrintfulClient, type PrintfulClient } from "@dean/pod-fulfillment";
 import { calculateRetailPrice } from "@dean/pricing-engine";
 import { getPrismaClient } from "@dean/db";
 import { loadEnv } from "@dean/config";
 import { createLogger } from "@dean/logger";
-import type { Address, PrintfulVariant } from "@dean/shared-types";
+import type { Address, SizeOption } from "@dean/shared-types";
 
 const logger = createLogger("api:order");
+
+const SIZES = ["S", "M", "L", "XL", "XXL"] as const;
 
 // A modest, expandable set of countries Stripe's hosted Checkout can collect a shipping
 // address for. Not exhaustive -- widen this list as real demand shows up from other countries.
@@ -17,14 +18,14 @@ const SHIPPABLE_COUNTRIES: Stripe.Checkout.SessionCreateParams.ShippingAddressCo
 
 export interface CreateCheckoutSessionInput {
   designId: string;
-  variantId: number;
+  size: string;
   quantity: number;
 }
 
 @Injectable()
 export class OrderService {
   private readonly stripe: Stripe;
-  private readonly printful: PrintfulClient;
+  private readonly baseCostMinorUnits: number;
   private readonly marginRate: number;
   private readonly webUrl: string;
   private readonly webhookSecret: string;
@@ -34,22 +35,19 @@ export class OrderService {
     if (!env.STRIPE_SECRET_KEY) {
       logger.warn("STRIPE_SECRET_KEY is not set; checkout will fail until it's configured");
     }
-    if (!env.PRINTFUL_API_KEY) {
-      logger.warn("PRINTFUL_API_KEY is not set; order fulfillment will fail until it's configured");
-    }
     this.stripe = new Stripe(env.STRIPE_SECRET_KEY ?? "");
-    this.printful = createPrintfulClient(env.PRINTFUL_API_KEY ?? "", env.PRINTFUL_TSHIRT_PRODUCT_ID);
+    this.baseCostMinorUnits = env.BASE_PRODUCT_COST_MINOR_UNITS;
     this.marginRate = env.MARGIN_RATE;
     this.webUrl = env.WEB_PUBLIC_URL.replace(/\/+$/, "");
     this.webhookSecret = env.STRIPE_WEBHOOK_SECRET ?? "";
   }
 
-  async listVariants(): Promise<(PrintfulVariant & { retailPrice: PrintfulVariant["baseCost"] })[]> {
-    const variants = await this.printful.listTShirtVariants();
-    return variants.map((variant) => ({
-      ...variant,
-      retailPrice: calculateRetailPrice({ baseCost: variant.baseCost, marginRate: this.marginRate }).retailPrice,
-    }));
+  listSizes(): SizeOption[] {
+    const { retailPrice } = calculateRetailPrice({
+      baseCost: { amountMinorUnits: this.baseCostMinorUnits, currency: "USD" },
+      marginRate: this.marginRate,
+    });
+    return SIZES.map((size) => ({ size, retailPrice }));
   }
 
   async createCheckoutSession(input: CreateCheckoutSessionInput): Promise<{ checkoutUrl: string }> {
@@ -57,23 +55,20 @@ export class OrderService {
     const design = await prisma.design.findUnique({ where: { id: input.designId } });
     if (!design) throw new NotFoundException(`Design "${input.designId}" not found`);
 
-    const variants = await this.printful.listTShirtVariants();
-    const variant = variants.find((v) => v.variantId === input.variantId);
-    if (!variant) throw new NotFoundException(`Printful variant "${input.variantId}" not found`);
-
-    const { retailPrice } = calculateRetailPrice({ baseCost: variant.baseCost, marginRate: this.marginRate });
+    const sizeOption = this.listSizes().find((s) => s.size === input.size);
+    if (!sizeOption) throw new NotFoundException(`Size "${input.size}" not available`);
 
     const session = await this.stripe.checkout.sessions.create({
       mode: "payment",
       line_items: [
         {
           price_data: {
-            currency: retailPrice.currency.toLowerCase(),
+            currency: sizeOption.retailPrice.currency.toLowerCase(),
             product_data: {
-              name: `Custom design t-shirt (${variant.size}, ${variant.color})`,
+              name: `Custom design t-shirt (${input.size})`,
               images: [design.imageUrl],
             },
-            unit_amount: retailPrice.amountMinorUnits,
+            unit_amount: sizeOption.retailPrice.amountMinorUnits,
           },
           quantity: input.quantity,
         },
@@ -81,20 +76,21 @@ export class OrderService {
       shipping_address_collection: { allowed_countries: SHIPPABLE_COUNTRIES },
       success_url: `${this.webUrl}/order/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${this.webUrl}/chat`,
-      metadata: { designId: input.designId, variantId: String(input.variantId), quantity: String(input.quantity) },
+      metadata: { designId: input.designId, size: input.size, quantity: String(input.quantity) },
     });
 
-    await prisma.order.create({
+    const order = await prisma.order.create({
       data: {
         designId: input.designId,
-        variantId: input.variantId,
+        size: input.size,
         quantity: input.quantity,
-        retailPriceAmountMinorUnits: retailPrice.amountMinorUnits,
-        currency: retailPrice.currency,
+        retailPriceAmountMinorUnits: sizeOption.retailPrice.amountMinorUnits,
+        currency: sizeOption.retailPrice.currency,
         status: "PENDING_PAYMENT",
         stripeCheckoutSessionId: session.id,
       },
     });
+    logger.info({ orderId: order.id, sessionId: session.id }, "checkout session created");
 
     if (!session.url) throw new Error("Stripe did not return a checkout URL");
     return { checkoutUrl: session.url };
@@ -102,8 +98,10 @@ export class OrderService {
 
   /**
    * Verifies and handles a Stripe webhook event. Only "checkout.session.completed" triggers
-   * real work (marking the order paid and submitting it to Printful); every other event type
-   * is accepted and ignored, since Stripe retries on non-2xx responses.
+   * real work (marking the order paid and recording the shipping address); every other event
+   * type is accepted and ignored, since Stripe retries on non-2xx responses. Fulfillment itself
+   * (printing, shipping, tracking) happens in-house from here on, driven manually through the
+   * admin dashboard rather than an external API.
    *
    * Note on Stripe's shipping-address field name: this reads `session.shipping_details`, the
    * field name Stripe's newer API versions use once shipping_address_collection is set;
@@ -120,10 +118,7 @@ export class OrderService {
 
     const session = event.data.object as Stripe.Checkout.Session;
     const prisma = getPrismaClient();
-    const order = await prisma.order.findUnique({
-      where: { stripeCheckoutSessionId: session.id },
-      include: { design: true },
-    });
+    const order = await prisma.order.findUnique({ where: { stripeCheckoutSessionId: session.id } });
     if (!order) {
       logger.warn({ sessionId: session.id }, "checkout.session.completed for an unknown order");
       return;
@@ -155,23 +150,27 @@ export class OrderService {
         shippingCountryCode: recipient.countryCode,
       },
     });
+    logger.info({ orderId: order.id }, "order paid -- queued for manual fulfillment");
+  }
 
-    try {
-      const printfulOrder = await this.printful.createOrder({
-        variantId: order.variantId,
-        quantity: order.quantity,
-        designImageUrl: order.design.imageUrl,
-        recipient,
-        recipientEmail: recipientEmail ?? "",
-      });
-      await prisma.order.update({
-        where: { id: order.id },
-        data: { status: "SUBMITTED_TO_PRINTFUL", printfulOrderId: printfulOrder.printfulOrderId },
-      });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      logger.error({ orderId: order.id, err: message }, "Printful order submission failed after payment -- needs manual follow-up");
-      await prisma.order.update({ where: { id: order.id }, data: { status: "FULFILLMENT_FAILED" } });
-    }
+  /**
+   * Public order lookup by order id. There's no user/account system yet, so the order id
+   * itself (a long, unguessable cuid) acts as the access token, same pattern as a typical
+   * guest-checkout order-tracking link.
+   */
+  async getOrderById(id: string) {
+    const order = await getPrismaClient().order.findUnique({ where: { id }, include: { design: true } });
+    if (!order) throw new NotFoundException(`Order "${id}" not found`);
+    return order;
+  }
+
+  /** Resolves a Stripe checkout session id to the order it created, for the post-payment redirect. */
+  async getOrderIdBySession(sessionId: string): Promise<{ orderId: string }> {
+    const order = await getPrismaClient().order.findUnique({
+      where: { stripeCheckoutSessionId: sessionId },
+      select: { id: true },
+    });
+    if (!order) throw new NotFoundException(`No order found for session "${sessionId}"`);
+    return { orderId: order.id };
   }
 }

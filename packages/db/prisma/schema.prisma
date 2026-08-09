@@ -1,4 +1,4 @@
-// Eldorado: AI-generated clothing designs, printed and shipped on demand via Printful.
+// Eldorado: AI-generated clothing designs, printed and shipped on demand in-house.
 
 generator client {
   provider = "prisma-client-js"
@@ -22,24 +22,27 @@ model Order {
   id                           String   @id @default(cuid())
   designId                     String
   design                       Design   @relation(fields: [designId], references: [id])
-  variantId                    Int
+  size                         String
   quantity                     Int      @default(1)
   retailPriceAmountMinorUnits  Int
   currency                     String
   // Unknown until Stripe Checkout completes -- Stripe's hosted page collects this itself, so
   // the app never needs its own email/shipping form before starting checkout.
-  recipientEmail                String?
+  recipientEmail               String?
   shippingName                 String?
   shippingLine1                String?
   shippingLine2                String?
   shippingCity                 String?
-  shippingRegion                String?
+  shippingRegion               String?
   shippingPostalCode           String?
   shippingCountryCode          String?
-  // PENDING_PAYMENT | PAID | SUBMITTED_TO_PRINTFUL | FULFILLMENT_FAILED | IN_PRODUCTION | SHIPPED | CANCELED
+  // PENDING_PAYMENT | PAID | IN_PRODUCTION | SHIPPED | CANCELED -- fulfillment is in-house and
+  // manual, driven from the admin dashboard, not an external POD API.
   status                       String   @default("PENDING_PAYMENT")
   stripeCheckoutSessionId      String?  @unique
-  printfulOrderId              String?
+  trackingCarrier              String?
+  trackingNumber               String?
+  trackingUrl                  String?
   createdAt                    DateTime @default(now())
   updatedAt                    DateTime @updatedAt
 

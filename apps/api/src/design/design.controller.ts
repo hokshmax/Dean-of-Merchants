@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { BadRequestException, Controller, Get, Param, Res } from "@nestjs/common";
+import { BadRequestException, Controller, Get, Param, Query, Res } from "@nestjs/common";
 import type { Response } from "express";
 import { DesignService } from "./design.service";
 
@@ -11,6 +11,12 @@ const SAFE_FILENAME = /^[a-f0-9-]+\.(png|jpg)$/i;
 @Controller("designs")
 export class DesignController {
   constructor(private readonly designService: DesignService) {}
+
+  @Get()
+  async listRecent(@Query("limit") limit?: string) {
+    const parsedLimit = limit ? parseInt(limit, 10) : undefined;
+    return { designs: await this.designService.listRecent(parsedLimit && !Number.isNaN(parsedLimit) ? parsedLimit : undefined) };
+  }
 
   @Get(":filename")
   getDesignFile(@Param("filename") filename: string, @Res() res: Response) {

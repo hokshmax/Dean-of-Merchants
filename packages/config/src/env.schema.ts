@@ -30,21 +30,11 @@ export const envSchema = z.object({
   IMAGEN_MODEL: z.string().default("imagen-4.0-generate-001"),
 
   // Where generated design images are written on disk, and served from at
-  // `${API_PUBLIC_URL}/designs/<file>`. Printful's order API fetches the print file by URL, so
-  // API_PUBLIC_URL must be a real internet-reachable address (not "localhost") for order
-  // submission to actually work -- see README.
+  // `${API_PUBLIC_URL}/designs/<file>`.
   DESIGN_STORAGE_DIR: z.string().default("./data/designs"),
   API_PUBLIC_URL: z.string().default("http://localhost:3001"),
   // Where Stripe Checkout redirects back to after payment succeeds/is canceled.
   WEB_PUBLIC_URL: z.string().default("http://localhost:3000"),
-
-  // Printful (print-on-demand fulfillment). Free self-serve private API token from a Printful
-  // account's Settings > Stores > API section.
-  PRINTFUL_API_KEY: optionalSecret(),
-  // Printful catalog product id for the t-shirt this app sells. Defaults to Bella + Canvas
-  // 3001, Printful's own long-standing example product, but catalog ids are Printful's to
-  // change -- overridable rather than trusted blindly.
-  PRINTFUL_TSHIRT_PRODUCT_ID: z.coerce.number().int().default(71),
 
   // Stripe (checkout + payment). Test-mode keys from the Stripe dashboard are fine for
   // development; STRIPE_WEBHOOK_SECRET comes from the webhook endpoint's settings once one is
@@ -52,9 +42,17 @@ export const envSchema = z.object({
   STRIPE_SECRET_KEY: optionalSecret(),
   STRIPE_WEBHOOK_SECRET: optionalSecret(),
 
-  // Margin charged on top of Printful's base cost -- this is Eldorado's entire revenue model,
-  // no third-party affiliate/commission dependency.
+  // Fulfillment is in-house, not an external print-on-demand API -- this is your own per-shirt
+  // production cost (printing + your own shipping), in minor currency units (cents).
+  BASE_PRODUCT_COST_MINOR_UNITS: z.coerce.number().int().default(1500),
+  // Margin charged on top of that base cost -- this is Eldorado's entire revenue model, no
+  // third-party affiliate/commission dependency.
   MARGIN_RATE: z.coerce.number().default(0.5),
+
+  // Shared secret for the admin dashboard (/admin) -- there's no real user/staff account system
+  // yet, so this is a single bearer token checked on every admin request. Treat it like a
+  // password: set a long random value, never commit it.
+  ADMIN_TOKEN: optionalSecret(),
 
   API_PORT: z.coerce.number().default(3001),
   WEB_PORT: z.coerce.number().default(3000),

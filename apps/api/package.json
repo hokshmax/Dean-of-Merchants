@@ -16,7 +16,6 @@
     "@dean/db": "workspace:*",
     "@dean/image-generation": "workspace:*",
     "@dean/logger": "workspace:*",
-    "@dean/pod-fulfillment": "workspace:*",
     "@dean/pricing-engine": "workspace:*",
     "@dean/shared-types": "workspace:*",
     "@nestjs/common": "^10.4.15",

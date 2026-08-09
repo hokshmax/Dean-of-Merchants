@@ -3,7 +3,7 @@ import { money } from "./money";
 import { calculateRetailPrice } from "./retail-price";
 
 describe("calculateRetailPrice", () => {
-  it("applies the default 50% margin on top of Printful's base cost", () => {
+  it("applies the default 50% margin on top of the in-house base cost", () => {
     const result = calculateRetailPrice({ baseCost: money(1_500, "USD") });
     expect(result.margin).toEqual(money(750, "USD"));
     expect(result.retailPrice).toEqual(money(2_250, "USD"));
