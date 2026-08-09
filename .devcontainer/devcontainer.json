@@ -2,8 +2,12 @@
   "name": "Eldorado",
   "image": "mcr.microsoft.com/devcontainers/typescript-node:1-20-bookworm",
 
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+
   "onCreateCommand": "sudo corepack enable && sudo corepack prepare pnpm@10.33.0 --activate",
-  "postCreateCommand": "pnpm install && pnpm --filter @dean/db prisma:generate",
+  "postCreateCommand": "docker compose -f infra/docker-compose.yml up -d postgres redis && pnpm install && pnpm --filter @dean/db prisma:generate && pnpm --filter @dean/db prisma:migrate:deploy",
 
   "containerEnv": {
     "NODE_ENV": "development",

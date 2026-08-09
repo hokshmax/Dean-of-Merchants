@@ -54,7 +54,8 @@ anyone with the token can see and edit every order.
 ## Test it in GitHub Codespaces (no local setup)
 
 1. On this repo's GitHub page: **Code → Codespaces → Create codespace on this branch**.
-2. Wait for the container to finish setup (installs dependencies, generates the Prisma client).
+2. Wait for the container to finish setup (starts Postgres/Redis, installs dependencies,
+   generates the Prisma client, and creates the Design/Order tables).
 3. Add secrets in **Settings → Secrets and variables → Codespaces**: `GEMINI_API_KEY`,
    `TAP_SECRET_KEY`, `ADMIN_TOKEN` (or `ANTHROPIC_API_KEY` instead of Gemini for chat, with
    `AI_PROVIDER=claude`).
@@ -93,6 +94,7 @@ Requires Node 20+ and pnpm (`corepack enable` gets you the right pnpm version).
 cp .env.example .env      # fill in GEMINI_API_KEY, TAP_SECRET_KEY, ADMIN_TOKEN, etc.
 pnpm install
 pnpm --filter @dean/db prisma:generate
+pnpm --filter @dean/db prisma:migrate:deploy   # creates the Design/Order tables
 pnpm turbo run dev
 ```
 
