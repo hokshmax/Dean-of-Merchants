@@ -10,7 +10,8 @@ RUN pnpm install --frozen-lockfile
 RUN pnpm turbo run build --filter=@dean/web...
 
 ENV NODE_ENV=production
+ENV PORT=3000
 EXPOSE 3000
 
 WORKDIR /app/apps/web
-CMD ["pnpm", "start", "--", "-p", "3000"]
+CMD ["pnpm", "start"]
